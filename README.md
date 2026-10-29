@@ -4,7 +4,7 @@ Mini red social académica: perfiles, publicaciones con imágenes, likes, coment
 
 ## Estado
 
-Backend funcional en Docker local. El frontend de Gustavo está implementado en Next.js; ver apps/web/README.md. El despliegue público y el PDF final siguen pendientes; las direcciones localhost son exclusivamente de desarrollo.
+Frontend desplegado en Vercel, API en Render, PostgreSQL en Neon e imágenes en Cloudinary. También puede ejecutarse con Docker local. Las direcciones localhost son exclusivamente de desarrollo. El PDF de entrega sigue pendiente.
 
 | Recurso | Dirección |
 |---|---|
@@ -12,8 +12,11 @@ Backend funcional en Docker local. El frontend de Gustavo está implementado en 
 | API local / health | http://localhost:4300/api/health |
 | Swagger local | http://localhost:4300/api/docs |
 | OpenAPI JSON local | http://localhost:4300/api/docs-json |
-| Frontend público | Pendiente de publicación |
-| Backend / Swagger públicos | Pendientes de servidor y dominio |
+| Frontend público | https://hivibe-web.vercel.app |
+| Backend público | https://hivibe.onrender.com |
+| Health público | https://hivibe.onrender.com/api/health |
+| Swagger público | https://hivibe.onrender.com/api/docs |
+| OpenAPI JSON público | https://hivibe.onrender.com/api/docs-json |
 
 ## Tecnologías y arquitectura
 
@@ -21,10 +24,10 @@ NestJS, TypeScript, PostgreSQL 17, Prisma 7, Argon2id, JWT HS256, Socket.IO, Doc
 
 ```mermaid
 flowchart LR
-  Web["Frontend Next.js"] -->|REST + JWT| API["NestJS /api"]
+  Web["Next.js / Vercel"] -->|REST + JWT| API["NestJS / Render /api"]
   Web <-->|Socket.IO| API
-  API --> DB[("PostgreSQL")]
-  API --> Media["Volumen persistente / Cloudinary"]
+  API --> DB[("PostgreSQL / Neon")]
+  API --> Media["Cloudinary"]
   API --> Swagger["/api/docs"]
 ```
 
@@ -92,9 +95,17 @@ El audit completo puede reportar seis alertas bajas transitivas de deepmerge/Jes
 
 ## Despliegue y entrega
 
-Ver [DEPLOY.md](apps/api/DEPLOY.md), que incluye un Compose opcional con Caddy para un VPS. Tener Docker local no publica la aplicación en Internet. Después de disponer de servidor/dominio, verificar HTTPS, /api/health, /api/docs y Socket.IO desde otra red, e incorporar URLs reales aquí.
+El despliegue público usa la rama `codex/profile-comments-alerts` del repositorio. Vercel compila `apps/web` como Next.js; Render construye el Dockerfile de `apps/api` y aplica las migraciones Prisma al arrancar. Neon conserva los datos y Cloudinary almacena las imágenes fuera del disco efímero de Render.
 
-Pendientes del curso: publicación web/API, README con URLs verificadas y PDF con nombres/carnés confirmados, arquitectura, capturas reales y enlaces. No se inventan datos personales ni evidencia de producción.
+En Vercel configurar `API_URL=https://hivibe.onrender.com/api` y `NEXT_PUBLIC_SOCKET_URL=https://hivibe.onrender.com`. En Render configurar `DATABASE_URL` con la conexión privada de Neon, `JWT_SECRET` aleatorio, `FRONTEND_URL=https://hivibe-web.vercel.app`, `MEDIA_PROVIDER=cloudinary` y las tres variables `CLOUDINARY_*`. Los secretos se guardan en los paneles de los proveedores; nunca en Git. Aplicar un nuevo despliegue al modificar variables.
+
+La documentación pública se abre directamente en [Swagger](https://hivibe.onrender.com/api/docs); para rutas protegidas, iniciar sesión mediante la API y usar el token con el botón Authorize.
+
+Verificados el 29 de octubre de 2026: inicio y registro públicos, health directo y a través del frontend, Swagger/OpenAPI y apertura de Socket.IO desde el dominio de Vercel. La subida de imagen en producción fue confirmada por Gustavo. Queda por comprobar el flujo completo entre dos cuentas desde dispositivos distintos.
+
+Render Free puede suspender la API tras inactividad; la primera visita puede tardar aproximadamente un minuto. Antes de la exposición abrir la aplicación y comprobar el health. Los planes gratuitos tienen límites de uso.
+
+Ver [DEPLOY.md](apps/api/DEPLOY.md) para la alternativa de VPS con Caddy. Pendiente de entrega: PDF con nombres/carnés confirmados, arquitectura, capturas reales y enlaces.
 
 ## Frontend local
 
