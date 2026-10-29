@@ -26,10 +26,12 @@ No colocar secretos en variables NEXT_PUBLIC_. En producción configurar FRONTEN
 - Bienvenida y formularios prerenderizados.
 - Registro, login real y cierre de sesión.
 - Feed general y de seguidos, publicaciones texto/foto, likes, comentarios y borrado propio.
-- Perfil con avatar, portada, bio, contadores y edición; perfil público con SSR para visitantes.
+- Perfil con avatar, portada, bio, estado corto (80 caracteres), contadores y edición; perfil público con SSR para visitantes. Cuatro temas persistentes (classic/ocean/rose/forest) cambian colores, fondo y bordes para todos los visitantes.
 - Cuates: buscar alias exacto, seguir/dejar de seguir, seguidores y seguidos.
 - Chat privado persistente con historial por cursor, deduplicación y reconexión.
-- Notificaciones con lectura, contadores y presencia en vivo.
+- Notificaciones sociales con lectura, contador dedicado y enlace al post/comentario/respuesta o perfil. No incluyen mensajes, tampoco los históricos.
+- Avisos de mensajes independientes, cerrables y de 10 segundos; punto de Mensajes persistente hasta leer la conversación visible.
+- Comentarios con respuestas de un nivel, Nitido individual y paginación; enlaces directos abren y enfocan el comentario solicitado.
 - Vistas móviles, navegación por teclado, estados de carga/error/vacío y confirmación inline al borrar.
 
 Rutas: /, /registro, /login, /feed, /perfil/:username, /cuates, /mensajes y /notificaciones. /panas redirige a /cuates por compatibilidad.
@@ -66,3 +68,9 @@ PLAYWRIGHT_SERVER_COMMAND="npm run start" permite ejecutar los mismos tests cont
 6. Pruebas de navegador, CI y documentación.
 
 Pendiente externo: cuentas gratuitas/configuración de hosting, URLs públicas frontend/API y documento PDF de entrega.
+
+## Verificación de funciones nuevas
+
+`tests/features.spec.ts` prueba dos cuentas: persistencia de estado/tema en perfil propio, ajeno y público sin JavaScript; rechazo de valores no admitidos; respuesta y Nitido en comentarios; notificaciones con enlace exacto y recarga; aviso de mensaje de 10 segundos, cierre manual y lectura persistente sin generar avisos en la campana. La franja de alias encima de la portada fue eliminada.
+
+La migración `20261029080000_profile_comments_unread` añade los campos y relaciones necesarios. Aplicar con `npm run db:migrate` en API, o reconstruir Compose (migra al iniciar). No eliminar volúmenes.
