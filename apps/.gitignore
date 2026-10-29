@@ -5,3 +5,5 @@ dist/
 !.env.example
 api/src/generated/
 *.tsbuildinfo
+api/uploads/
+api/coverage/

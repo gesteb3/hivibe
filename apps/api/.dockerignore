@@ -6,4 +6,5 @@ dist
 .git
 coverage
 *.log
+uploads
 probar-*.cjs

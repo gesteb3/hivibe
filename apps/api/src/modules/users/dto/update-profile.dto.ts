@@ -2,11 +2,12 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsOptional,
   IsString,
-  IsUrl,
+  Validate,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { MediaUrlValidator } from '../../media/media-url.validator';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({
@@ -40,10 +41,7 @@ export class UpdateProfileDto {
     maxLength: 2048,
   })
   @IsOptional()
-  @IsUrl({
-    protocols: ['https'],
-    require_protocol: true,
-  })
+  @Validate(MediaUrlValidator)
   @MaxLength(2048)
   avatarUrl?: string;
 
@@ -54,10 +52,7 @@ export class UpdateProfileDto {
     maxLength: 2048,
   })
   @IsOptional()
-  @IsUrl({
-    protocols: ['https'],
-    require_protocol: true,
-  })
+  @Validate(MediaUrlValidator)
   @MaxLength(2048)
   coverUrl?: string;
 }

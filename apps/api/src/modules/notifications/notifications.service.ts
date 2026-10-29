@@ -1,9 +1,10 @@
-
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../../database/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { SOCIAL_EVENTS } from '../social/social.events';
+import { AUTHOR_SELECT } from '../social/post.mapper';
+import type { Pagination } from '../social/pagination';
 
 import type {
   LikeEvent,
@@ -37,13 +38,10 @@ export class NotificationsService {
         postId,
         messageId,
       },
+      include: { actor: { select: AUTHOR_SELECT } },
     });
 
-    this.realtime.enviarAUsuario(
-      userId,
-      'notification:new',
-      notification,
-    );
+    this.realtime.enviarAUsuario(userId, 'notification:new', notification);
 
     return notification;
   }
@@ -91,14 +89,16 @@ export class NotificationsService {
 
   @OnEvent(SOCIAL_EVENTS.COUNTS_CHANGED)
   onCountsChanged(event: CountsEvent) {
-    this.realtime.server.emit('post:counts', event);
+    this.realtime.broadcast('post:counts', event);
   }
 
-  async list(userId: string) {
+  async list(userId: string, pagination: Pagination) {
     return this.prisma.notification.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      skip: pagination.skip,
+      take: pagination.limit,
+      include: { actor: { select: AUTHOR_SELECT } },
     });
   }
 
@@ -117,6 +117,7 @@ export class NotificationsService {
 
     return this.prisma.notification.findFirst({
       where: { id: notificationId, userId },
+      include: { actor: { select: AUTHOR_SELECT } },
     });
   }
 

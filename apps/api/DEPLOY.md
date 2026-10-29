@@ -1,38 +1,40 @@
-# HiVibe API - guia de despliegue
+# Despliegue de HiVibe API
 
-## Requisitos
-Node.js 24, npm, Docker y PostgreSQL 17.
+## Local verificado
 
-## Desarrollo local
-1. Crear apps/api/.env a partir de .env.example y configurar DATABASE_URL, JWT_SECRET y FRONTEND_URL.
-2. Desde apps/api ejecutar npm ci.
-3. Ejecutar npm run prisma:generate y npm run db:migrate.
-4. Ejecutar npm run build y npm run start:dev.
-5. Consultar /api/health y /api/docs en el puerto 4300.
+Desde apps/api:
 
-## Docker
-El archivo compose.yaml define PostgreSQL y la API. Antes de usarlo, configurar POSTGRES_PASSWORD, DATABASE_URL, FRONTEND_URL y JWT_SECRET en un archivo .env local que nunca se sube a Git. DATABASE_URL debe apuntar a db:5432 dentro de la red Docker. Si la clave contiene caracteres especiales, codificarla para una URL PostgreSQL.
+```powershell
+npm ci
+npm run setup:local
+docker compose up -d --build --wait
+docker compose ps
+```
 
-Ejecutar desde apps/api: docker compose up --build -d.
-Verificar: docker compose ps y docker compose logs --tail 100 api.
-No publicar el puerto de PostgreSQL en Internet.
+Configurar secretos en .env, nunca en Git. La base y las imágenes usan volúmenes persistentes. Los puertos 4300 y 5433 se exponen solo en loopback. La API aplica prisma migrate deploy al iniciar y ofrece /api/health y /api/docs.
 
-## HTTPS y WSS
-Para un dominio publico se necesita un proveedor de alojamiento o proxy inverso con TLS. Publicar la API bajo HTTPS y permitir WebSocket seguro (WSS) en el proxy. Configurar FRONTEND_URL con el origen exacto del frontend. Nunca publicar JWT_SECRET, DATABASE_URL ni contrasenas.
+## VPS con dominio y HTTPS
 
-## Eventos Socket.IO
-Autenticacion: handshake.auth.token (JWT).
-chat:new: mensaje persistido dirigido a los participantes.
-notification:new: notificacion dirigida al destinatario.
-post:counts: postId, likesCount y commentsCount.
-presence:update: userId y online. La presencia en memoria solo funciona correctamente con una instancia del backend.
+Esta configuración está preparada; no representa un despliegue público ya realizado.
 
-## Validaciones pendientes de ejecutar en entorno real
-- npm ci, npm run build, npm test.
-- docker compose up --build -d, migraciones y /api/health.
-- Dos usuarios con JWT: chat:new y notification:new.
-- Like o comentario: post:counts.
-- Dos pestañas del mismo usuario: presencia online hasta cerrar la ultima.
-- HTTPS/WSS y Swagger publico tras configurar alojamiento y dominio.
+1. Disponer de un VPS con Docker/Compose y dominio cuyo DNS apunte al servidor. Abrir 80/443 en su firewall.
+2. Copiar/clonar el repositorio, ejecutar npm run setup:local para generar configuración (o crear .env desde .env.example con secretos propios).
+3. En .env fijar API_DOMAIN al hostname real, FRONTEND_URL al origen HTTPS real del frontend, MEDIA_PUBLIC_URL a https://HOSTNAME_REAL/media. Mantener DOCKER_DATABASE_URL apuntando a db:5432, con contraseña codificada.
+4. Iniciar desde apps/api:
+```bash
+docker compose -f compose.yaml -f compose.production.yaml up -d --build --wait
+```
+5. Caddy publica el proxy 80/443; la API y BD siguen en loopback. Verificar certificados, /api/health, /api/docs, /api/docs-json, imágenes y Socket.IO con dos cuentas desde otra red.
+6. Registrar las URLs REALES en README y PDF. El frontend se publica por separado cuando exista.
 
-Los archivos del repositorio no prueban por si solos que exista un despliegue publico.
+[Caddy automatiza certificados públicos cuando DNS y puertos están configurados](https://caddyserver.com/docs/automatic-https); [reverse_proxy soporta WebSockets](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy). El proxy opcional no se inicia en el entorno local normal.
+
+Para Cloudinary: MEDIA_PROVIDER=cloudinary y CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET. Compose pasa esas variables; el frontend solo recibe URLs. Con imágenes locales se necesita un disco persistente y respaldos del volumen, además de PostgreSQL. Un PaaS con disco efímero requiere Cloudinary u otro almacenamiento persistente.
+
+## Operación
+
+Detener sin borrar datos: docker compose down. No eliminar volúmenes para actualizar. Para actualizar código: reconstruir API; las migraciones ya aplicadas no se repiten. Antes de cambios de esquema, respaldar PostgreSQL con pg_dump y conservar una copia de imágenes fuera del servidor. Ensayar restauración en una base aislada.
+
+El rate limit y presencia están en memoria y son de una instancia. En proxy, la API conserva la IP del proxy como clave del rate limit: es conservador y compartido entre usuarios. Para límites por usuario/IP pública, configurar trust proxy únicamente para el proxy real, junto con almacenamiento compartido si se escala; no confiar indiscriminadamente en X-Forwarded-For.
+
+No hay cuentas de alojamiento ni dominio configurados en esta sesión. Publicación frontend/API y PDF siguen pendientes.

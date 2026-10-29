@@ -1,9 +1,8 @@
 import { Test } from '@nestjs/testing';
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { HttpExceptionFilter } from '../src/common/filters/http-exception/http-exception.filter';
+import { configureApp } from '../src/config/configure-app';
 
 describe('HiVibe API (e2e)', () => {
   let app: INestApplication;
@@ -15,17 +14,7 @@ describe('HiVibe API (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    app.setGlobalPrefix('api');
-
-    app.useGlobalFilters(new HttpExceptionFilter());
-
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureApp(app);
 
     await app.init();
   });
