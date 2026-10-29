@@ -64,4 +64,4 @@ La configuración exige JWT_SECRET aleatorio de al menos 32 caracteres y origen 
 
 Ver comandos del README raíz. Las migraciones se conservan sin reescribir su historial. Se prueba migración desde BD vacía y reejecución sin pendientes. El contenedor ejecuta migraciones antes de servir, corre como usuario node y su etapa final omite herramientas de desarrollo. No contiene .env ni credenciales de build.
 
-No hay frontend ni despliegue público todavía. El README de auditoría original conserva hallazgos históricos; consultar CORRECCIONES.md para el cierre actual.
+El frontend está implementado en apps/web; el despliegue público sigue pendiente. El README de auditoría original conserva hallazgos históricos; consultar CORRECCIONES.md para el cierre actual.

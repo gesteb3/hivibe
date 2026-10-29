@@ -4,7 +4,7 @@ Mini red social académica: perfiles, publicaciones con imágenes, likes, coment
 
 ## Estado
 
-Backend funcional en Docker local. El frontend de Gustavo todavía no se implementa. El despliegue público y el PDF final siguen pendientes; las direcciones localhost son exclusivamente de desarrollo.
+Backend funcional en Docker local. El frontend de Gustavo está implementado en Next.js; ver apps/web/README.md. El despliegue público y el PDF final siguen pendientes; las direcciones localhost son exclusivamente de desarrollo.
 
 | Recurso | Dirección |
 |---|---|
@@ -12,16 +12,16 @@ Backend funcional en Docker local. El frontend de Gustavo todavía no se impleme
 | API local / health | http://localhost:4300/api/health |
 | Swagger local | http://localhost:4300/api/docs |
 | OpenAPI JSON local | http://localhost:4300/api/docs-json |
-| Frontend público | Pendiente de implementación y publicación |
+| Frontend público | Pendiente de publicación |
 | Backend / Swagger públicos | Pendientes de servidor y dominio |
 
 ## Tecnologías y arquitectura
 
-NestJS, TypeScript, PostgreSQL 17, Prisma 7, Argon2id, JWT HS256, Socket.IO, Docker Compose. Imágenes en volumen persistente Docker o Cloudinary. Frontend previsto: Next.js/React.
+NestJS, TypeScript, PostgreSQL 17, Prisma 7, Argon2id, JWT HS256, Socket.IO, Docker Compose. Imágenes en volumen persistente Docker o Cloudinary. Frontend: Next.js 16 / React 19.
 
 ```mermaid
 flowchart LR
-  Web["Frontend Next.js (pendiente)"] -->|REST + JWT| API["NestJS /api"]
+  Web["Frontend Next.js"] -->|REST + JWT| API["NestJS /api"]
   Web <-->|Socket.IO| API
   API --> DB[("PostgreSQL")]
   API --> Media["Volumen persistente / Cloudinary"]
@@ -60,9 +60,9 @@ Ver [apps/api/.env.example](apps/api/.env.example). DATABASE_URL es para Node en
 
 JWT_SECRET: al menos 32 caracteres aleatorios. FRONTEND_URL: origen exacto, sin barra final; por defecto http://localhost:3000. MEDIA_PROVIDER=local usa MEDIA_LOCAL_PATH y MEDIA_PUBLIC_URL; HTTP solo se admite para localhost. En producción usar HTTPS. Con cloudinary configurar las tres CLOUDINARY_*; Compose ya las pasa al contenedor.
 
-Variables previstas para el futuro frontend (sin secretos):
+Variables del frontend (sin secretos), en apps/web/.env.local:
 ```dotenv
-NEXT_PUBLIC_API_URL=http://localhost:4300/api
+API_URL=http://localhost:4300/api
 NEXT_PUBLIC_SOCKET_URL=http://localhost:4300
 ```
 
@@ -94,4 +94,8 @@ El audit completo puede reportar seis alertas bajas transitivas de deepmerge/Jes
 
 Ver [DEPLOY.md](apps/api/DEPLOY.md), que incluye un Compose opcional con Caddy para un VPS. Tener Docker local no publica la aplicación en Internet. Después de disponer de servidor/dominio, verificar HTTPS, /api/health, /api/docs y Socket.IO desde otra red, e incorporar URLs reales aquí.
 
-Pendientes del curso: frontend responsive conectado, publicación web/API, README con URLs verificadas y PDF con nombres/carnés confirmados, arquitectura, capturas reales y enlaces. No se inventan datos personales ni evidencia de producción.
+Pendientes del curso: publicación web/API, README con URLs verificadas y PDF con nombres/carnés confirmados, arquitectura, capturas reales y enlaces. No se inventan datos personales ni evidencia de producción.
+
+## Frontend local
+
+Desde apps/web: npm ci y npm run dev. Abrir http://localhost:3000 con la API Docker activa. Ver [documentación del frontend](apps/web/README.md) para rutas, sesión y pruebas de navegador.
