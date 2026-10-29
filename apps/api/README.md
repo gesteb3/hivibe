@@ -65,3 +65,16 @@ La configuración exige JWT_SECRET aleatorio de al menos 32 caracteres y origen 
 Ver comandos del README raíz. Las migraciones se conservan sin reescribir su historial. Se prueba migración desde BD vacía y reejecución sin pendientes. El contenedor ejecuta migraciones antes de servir, corre como usuario node y su etapa final omite herramientas de desarrollo. No contiene .env ni credenciales de build.
 
 El frontend está implementado en apps/web; el despliegue público sigue pendiente. El README de auditoría original conserva hallazgos históricos; consultar CORRECCIONES.md para el cierre actual.
+
+## Perfiles, comentarios y avisos (actualización)
+
+- PATCH /api/users/me acepta statusMessage (texto de hasta 80 caracteres; vacío para quitarlo) y profileTheme: classic, ocean, rose o forest. GET propio y perfil público devuelven ambos campos.
+- POST /api/posts/:id/comments acepta parentId opcional para responder a un comentario raíz del mismo post. No se admite responder a una respuesta: los hilos tienen una profundidad.
+- GET /api/posts/:id/comments pagina comentarios raíz e incluye hasta 20 respuestas por raíz. Cada comentario devuelve parentId, rootId, likesCount, likedByMe y repliesCount.
+- GET /api/comments/:id permite resolver un enlace directo al comentario. GET /api/comments/:id/replies pagina todas las respuestas con page/limit.
+- POST/DELETE /api/comments/:id/like agrega/quita Nitido con unicidad por usuario. Los errores de duplicado o reacción ausente son 409/404.
+- Socket comment:changed contiene postId, commentId y parentId; la UI puede recuperar la parte afectada.
+
+Las notificaciones sociales son LIKE, COMMENT, COMMENT_REPLY, COMMENT_LIKE y FOLLOW, con actor público, postId y commentId cuando corresponda. Las respuestas notifican al autor del comentario y al del post sin duplicar destinatarios ni notificar acciones propias. GET /api/notifications/unread devuelve {count}. La lectura emite notification:read {id} para otras pestañas.
+
+Los mensajes ya no crean notificaciones sociales. Las antiguas notificaciones MESSAGE se conservan en BD pero quedan fuera de listas y contadores. chat:new incluye sender público para los avisos temporales. GET /api/chat/unread devuelve el número total de mensajes recibidos sin leer; PATCH /api/chat/conversations/:id/read marca lectura solo para el participante autenticado y emite chat:read {conversationId} y chat:unread {count}. La lectura se guarda en PostgreSQL y sobrevive a recargas/reinicios.

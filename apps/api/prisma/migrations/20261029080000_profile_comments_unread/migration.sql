@@ -1,0 +1,11 @@
+ALTER TABLE "User" ADD COLUMN "statusMessage" VARCHAR(80), ADD COLUMN "profileTheme" VARCHAR(20) NOT NULL DEFAULT 'classic';
+ALTER TABLE "User" ADD CONSTRAINT "User_profileTheme_check" CHECK ("profileTheme" IN ('classic','ocean','rose','forest'));
+ALTER TABLE "Comment" ADD COLUMN "parentId" TEXT;
+ALTER TABLE "Comment" ADD CONSTRAINT "Comment_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Comment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE INDEX "Comment_parentId_createdAt_idx" ON "Comment"("parentId","createdAt");
+CREATE TABLE "CommentLike" ("userId" TEXT NOT NULL, "commentId" TEXT NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "CommentLike_pkey" PRIMARY KEY ("userId","commentId"));
+ALTER TABLE "CommentLike" ADD CONSTRAINT "CommentLike_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CommentLike" ADD CONSTRAINT "CommentLike_commentId_fkey" FOREIGN KEY ("commentId") REFERENCES "Comment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE INDEX "CommentLike_commentId_idx" ON "CommentLike"("commentId");
+ALTER TABLE "Conversation" ADD COLUMN "starterReadAt" TIMESTAMP(3), ADD COLUMN "receiverReadAt" TIMESTAMP(3);
+ALTER TABLE "Notification" ADD COLUMN "commentId" TEXT;

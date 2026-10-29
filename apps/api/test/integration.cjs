@@ -365,6 +365,111 @@ void test(
           assert.equal(relationship.isFollowedByMe, true);
         },
       );
+
+      await t.test(
+        'estado y tema guardados, respuestas y Nitido en comentarios',
+        async () => {
+          await api('/users/me', {
+            method: 'PATCH',
+            token: a.token,
+            body: { statusMessage: 'Estudiando', profileTheme: 'ocean' },
+          });
+          const profile = await api('/users/' + a.username);
+          assert.equal(profile.statusMessage, 'Estudiando');
+          assert.equal(profile.profileTheme, 'ocean');
+          await api('/users/me', {
+            method: 'PATCH',
+            token: a.token,
+            status: 400,
+            body: { profileTheme: 'css-libre' },
+          });
+          await api('/users/me', {
+            method: 'PATCH',
+            token: a.token,
+            status: 400,
+            body: { statusMessage: 'x'.repeat(81) },
+          });
+          const roots = await api('/posts/' + post.id + '/comments', {
+            token: a.token,
+          });
+          const root = roots.data[0];
+          assert.ok(root);
+          assert.equal(root.parentId, null);
+          const replyNotice = event(
+            sb,
+            'notification:new',
+            (x) => x.type === 'COMMENT_REPLY',
+          );
+          const reply = await api('/posts/' + post.id + '/comments', {
+            method: 'POST',
+            token: a.token,
+            status: 201,
+            body: { body: 'Respuesta al comentario', parentId: root.id },
+          });
+          const notice = await replyNotice;
+          assert.equal(notice.commentId, reply.id);
+          assert.equal(notice.postId, post.id);
+          const detail = await api('/comments/' + reply.id, { token: b.token });
+          assert.equal(detail.rootId, root.id);
+          const replies = await api('/comments/' + root.id + '/replies', {
+            token: b.token,
+          });
+          assert.ok(replies.data.some((x) => x.id === reply.id));
+          await api('/posts/' + post.id + '/comments', {
+            method: 'POST',
+            token: a.token,
+            status: 400,
+            body: { body: 'Nivel no permitido', parentId: reply.id },
+          });
+          const unlikeNotice = event(
+            sb,
+            'notification:new',
+            (x) => x.type === 'COMMENT_LIKE' && x.commentId === root.id,
+          );
+          await api('/comments/' + root.id + '/like', {
+            method: 'POST',
+            token: a.token,
+            status: 201,
+          });
+          await unlikeNotice;
+          const liked = await api('/comments/' + root.id, { token: a.token });
+          assert.equal(liked.likesCount, 1);
+          assert.equal(liked.likedByMe, true);
+          const unliked = await api('/comments/' + root.id, { token: c.token });
+          assert.equal(unliked.likedByMe, false);
+          await api('/comments/' + root.id + '/like', {
+            method: 'POST',
+            token: a.token,
+            status: 409,
+          });
+          await api('/comments/' + root.id + '/like', {
+            method: 'DELETE',
+            token: c.token,
+            status: 404,
+          });
+          await api('/comments/' + root.id + '/like', {
+            method: 'DELETE',
+            token: a.token,
+          });
+          await api('/comments/' + reply.id, {
+            method: 'DELETE',
+            token: c.token,
+            status: 403,
+          });
+          const foreignPost = await api('/posts', {
+            method: 'POST',
+            token: c.token,
+            status: 201,
+            body: { body: 'Otro post' },
+          });
+          await api('/posts/' + foreignPost.id + '/comments', {
+            method: 'POST',
+            token: c.token,
+            status: 400,
+            body: { body: 'Padre ajeno', parentId: root.id },
+          });
+        },
+      );
       await t.test(
         'chat privado persistido, entrega a ambos y aislamiento del tercero',
         async () => {
@@ -436,6 +541,57 @@ void test(
               conversation.id +
               '/messages?limit=Infinity',
             { token: a.token, status: 400 },
+          );
+        },
+      );
+
+      await t.test(
+        'mensajes no entran a notificaciones; lectura y contadores persisten',
+        async () => {
+          assert.equal(
+            (await api('/chat/unread', { token: b.token })).count,
+            1,
+          );
+          assert.equal(
+            (await api('/chat/unread', { token: a.token })).count,
+            0,
+          );
+          await api('/chat/conversations/' + conversation.id + '/read', {
+            method: 'PATCH',
+            token: c.token,
+            status: 403,
+          });
+          const unreadEvent = event(sb, 'chat:unread', (x) => x.count === 0);
+          await api('/chat/conversations/' + conversation.id + '/read', {
+            method: 'PATCH',
+            token: b.token,
+          });
+          await unreadEvent;
+          assert.equal(
+            (await api('/chat/unread', { token: b.token })).count,
+            0,
+          );
+          const count = await db.query(
+            'SELECT count(*)::int AS count FROM "Notification" WHERE "userId"=$1 AND type=\'MESSAGE\'',
+            [b.id],
+          );
+          assert.equal(count.rows[0].count, 0);
+          await db.query(
+            'INSERT INTO "Notification" (id,"userId","actorId",type,"isRead","createdAt") VALUES ($1,$2,$3,\'MESSAGE\',false,NOW())',
+            [randomUUID(), b.id, a.id],
+          );
+          assert.ok(
+            (await api('/notifications', { token: b.token })).every(
+              (n) => n.type !== 'MESSAGE',
+            ),
+          );
+          const expected = await db.query(
+            'SELECT count(*)::int AS count FROM "Notification" WHERE "userId"=$1 AND type<>\'MESSAGE\' AND "isRead"=false',
+            [b.id],
+          );
+          assert.equal(
+            (await api('/notifications/unread', { token: b.token })).count,
+            expected.rows[0].count,
           );
         },
       );
