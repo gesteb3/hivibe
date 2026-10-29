@@ -20,6 +20,8 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { LoginResponseDto } from './dto/auth-response.dto';
+import { OwnProfileDto } from '../users/dto/profile-response.dto';
 
 @ApiTags('Auth')
 @UseGuards(ThrottlerGuard)
@@ -35,6 +37,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Registrar una cuenta' })
   @ApiCreatedResponse({
     description: 'Usuario creado, sin contraseña ni hash',
+    type: OwnProfileDto,
   })
   @ApiBadRequestResponse({
     description: 'Datos inválidos o campos no permitidos',
@@ -51,6 +54,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Iniciar sesión y obtener un JWT' })
   @ApiOkResponse({
     description: 'Token Bearer válido por una hora y datos del usuario',
+    type: LoginResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Formato de credenciales inválido',

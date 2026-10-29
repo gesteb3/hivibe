@@ -1,4 +1,3 @@
-
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,6 +7,8 @@ import {
 import { PrismaService } from '../../database/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MessageHistoryQueryDto } from './dto/chat.dto';
+import { AUTHOR_SELECT } from '../social/post.mapper';
 
 @Injectable()
 export class ChatService {
@@ -53,31 +54,52 @@ export class ChatService {
   async misConversaciones(usuarioId: string) {
     return this.prisma.conversation.findMany({
       where: {
-        OR: [
-          { starterId: usuarioId },
-          { receiverId: usuarioId },
-        ],
+        OR: [{ starterId: usuarioId }, { receiverId: usuarioId }],
       },
       include: {
         starter: {
-          select: { id: true, username: true, displayName: true },
+          select: AUTHOR_SELECT,
         },
         receiver: {
-          select: { id: true, username: true, displayName: true },
+          select: AUTHOR_SELECT,
         },
       },
       orderBy: { updatedAt: 'desc' },
     });
   }
 
-  async obtenerMensajes(usuarioId: string, conversacionId: string) {
+  async obtenerMensajes(
+    usuarioId: string,
+    conversacionId: string,
+    query: MessageHistoryQueryDto = new MessageHistoryQueryDto(),
+  ) {
     await this.verificarParticipante(usuarioId, conversacionId);
-
-    return this.prisma.message.findMany({
-      where: { conversationId: conversacionId },
-      orderBy: { createdAt: 'asc' },
-      take: 100,
+    const before = query.before
+      ? await this.prisma.message.findFirst({
+          where: { id: query.before, conversationId: conversacionId },
+          select: { id: true, createdAt: true },
+        })
+      : null;
+    if (query.before && !before)
+      throw new NotFoundException(
+        'Cursor de mensaje no encontrado en esta conversación',
+      );
+    const messages = await this.prisma.message.findMany({
+      where: {
+        conversationId: conversacionId,
+        ...(before
+          ? {
+              OR: [
+                { createdAt: { lt: before.createdAt } },
+                { createdAt: before.createdAt, id: { lt: before.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: query.limit,
     });
+    return messages.reverse();
   }
 
   async enviarMensaje(
@@ -87,7 +109,7 @@ export class ChatService {
   ) {
     await this.verificarParticipante(usuarioId, conversacionId);
 
-    const texto = contenido?.trim();
+    const texto = typeof contenido === 'string' ? contenido.trim() : '';
 
     if (!texto || texto.length > 2000) {
       throw new BadRequestException(
@@ -95,39 +117,40 @@ export class ChatService {
       );
     }
 
-    const mensaje = await this.prisma.message.create({
-      data: {
-        conversationId: conversacionId,
-        senderId: usuarioId,
-        content: texto,
-      },
-    });
+    const { mensaje, conversacion } = await this.prisma.$transaction(
+      async (tx) => {
+        const mensaje = await tx.message.create({
+          data: {
+            conversationId: conversacionId,
+            senderId: usuarioId,
+            content: texto,
+          },
+        });
 
-    const conversacion = await this.prisma.conversation.update({
-      where: { id: conversacionId },
-      data: { updatedAt: new Date() },
-    });
+        const conversacion = await tx.conversation.update({
+          where: { id: conversacionId },
+          data: { updatedAt: new Date() },
+        });
+        return { mensaje, conversacion };
+      },
+    );
 
     const destinatarioId =
       conversacion.starterId === usuarioId
         ? conversacion.receiverId
         : conversacion.starterId;
 
-    this.realtime.enviarAUsuario(
-      destinatarioId,
-      'chat:new',
-      mensaje,
-    );
+    this.realtime.enviarAUsuario(destinatarioId, 'chat:new', mensaje);
 
-    this.realtime.enviarAUsuario(
-      usuarioId,
-      'chat:new',
-      mensaje,
-    );
+    this.realtime.enviarAUsuario(usuarioId, 'chat:new', mensaje);
 
     // La entrega del mensaje no debe fallar si la notificacion tiene un problema.
     try {
-      await this.notifications.notifyMessage(destinatarioId, usuarioId, mensaje.id);
+      await this.notifications.notifyMessage(
+        destinatarioId,
+        usuarioId,
+        mensaje.id,
+      );
     } catch {
       // El mensaje ya fue persistido y enviado por Socket.IO.
     }

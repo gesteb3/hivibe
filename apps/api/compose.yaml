@@ -1,3 +1,4 @@
+name: hivibe
 services:
   db:
     image: postgres:17-alpine
@@ -8,6 +9,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
     volumes:
       - hivibe_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hivibe -d hivibe"]
       interval: 5s
@@ -19,15 +22,30 @@ services:
       context: .
     restart: unless-stopped
     ports:
-      - "4300:4300"
+      - "127.0.0.1:4300:4300"
     environment:
       PORT: "4300"
       FRONTEND_URL: ${FRONTEND_URL:?Define FRONTEND_URL}
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET}
-      DATABASE_URL: postgresql://hivibe:${POSTGRES_PASSWORD}@db:5432/hivibe?schema=public
+      DATABASE_URL: ${DOCKER_DATABASE_URL:?Define DOCKER_DATABASE_URL}
+      MEDIA_PROVIDER: ${MEDIA_PROVIDER:-local}
+      MEDIA_LOCAL_PATH: /app/uploads
+      MEDIA_PUBLIC_URL: ${MEDIA_PUBLIC_URL:-http://localhost:4300/media}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    volumes:
+      - hivibe_media:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4300/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   hivibe_postgres_data:
+  hivibe_media:

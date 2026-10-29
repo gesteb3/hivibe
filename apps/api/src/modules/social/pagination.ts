@@ -11,11 +11,21 @@ export interface Pagination {
 }
 
 /** Paginación por page/limit. Valores inválidos (≤0, texto) usan el default; limit se topa en 50. */
-export function parsePagination(page?: string | number, limit?: string | number): Pagination {
+export function parsePagination(
+  page?: string | number,
+  limit?: string | number,
+): Pagination {
   const pn = Math.floor(Number(page));
   const ln = Math.floor(Number(limit));
-  const p = pn >= 1 ? pn : 1;
-  const l = ln >= 1 ? Math.min(MAX_LIMIT, ln) : DEFAULT_LIMIT;
+  const l =
+    Number.isSafeInteger(ln) && ln >= 1
+      ? Math.min(MAX_LIMIT, ln)
+      : DEFAULT_LIMIT;
+  // PostgreSQL/Prisma take/skip deben ser enteros finitos dentro de int32.
+  const p =
+    Number.isSafeInteger(pn) && pn >= 1 && (pn - 1) * l <= 2_147_483_647
+      ? pn
+      : 1;
   return { page: p, limit: l, skip: (p - 1) * l };
 }
 
@@ -25,6 +35,18 @@ export function buildMeta(total: number, { page, limit }: Pagination) {
 
 export const ApiPagination = () =>
   applyDecorators(
-    ApiQuery({ name: 'page', required: false, type: Number, example: 1, description: 'Página (desde 1)' }),
-    ApiQuery({ name: 'limit', required: false, type: Number, example: DEFAULT_LIMIT, description: `Elementos por página (máx. ${MAX_LIMIT})` }),
+    ApiQuery({
+      name: 'page',
+      required: false,
+      type: Number,
+      example: 1,
+      description: 'Página (desde 1)',
+    }),
+    ApiQuery({
+      name: 'limit',
+      required: false,
+      type: Number,
+      example: DEFAULT_LIMIT,
+      description: `Elementos por página (máx. ${MAX_LIMIT})`,
+    }),
   );
