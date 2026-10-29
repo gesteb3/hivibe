@@ -1,3 +1,5 @@
+> Actualización del frontend: ya implementado en apps/web; ver [README web](apps/web/README.md). Este documento registra el cierre anterior del backend. Publicación pública y PDF siguen pendientes.
+
 # Cierre de auditoría — 29 de octubre de 2026
 
 ## Resultado

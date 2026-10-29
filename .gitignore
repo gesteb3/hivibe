@@ -7,3 +7,7 @@ coverage/
 uploads/
 *.tsbuildinfo
 *.log
+.artifacts/
+test-results/
+playwright-report/
+.next/

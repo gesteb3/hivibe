@@ -1,0 +1,3 @@
+import Link from 'next/link';
+export function Brand({small=false}:{small?:boolean}) {return <Link href="/" className={'brand '+(small?'brand-small':'')} aria-label="HiVibe, inicio"><span>hi<span className="brand-vibe">vibe</span><span className="brand-spark">✱</span></span><small>tu espacio en internet</small></Link>}
+export function Avatar({user,size=''}:{user:{displayName?:string|null,username?:string,avatarUrl?:string|null},size?:string}) {return user.avatarUrl ? <img className={'avatar '+size} src={user.avatarUrl} alt={user.displayName||user.username||'Avatar'} /> : <span className={'avatar avatar-fallback '+size} aria-hidden="true">{(user.displayName||user.username||'?').slice(0,1).toUpperCase()}</span>}
