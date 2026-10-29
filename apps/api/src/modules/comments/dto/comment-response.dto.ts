@@ -2,6 +2,13 @@ import { ApiProperty } from '@nestjs/swagger';
 import { AuthorDto, PaginationMetaDto } from '../../social/dto/common.dto';
 
 export class CommentDto {
+  @ApiProperty({ nullable: true }) parentId!: string | null;
+  @ApiProperty() rootId!: string;
+  @ApiProperty() likesCount!: number;
+  @ApiProperty() likedByMe!: boolean;
+  @ApiProperty() repliesCount!: number;
+  @ApiProperty({ type: () => [CommentDto], required: false })
+  replies?: CommentDto[];
   @ApiProperty() id!: string;
   @ApiProperty() postId!: string;
   @ApiProperty({ example: '¡Buenísimo, pana!' }) body!: string;
@@ -10,7 +17,11 @@ export class CommentDto {
 }
 
 export class CreatedCommentDto extends CommentDto {
-  @ApiProperty({ example: 2, description: 'Total actualizado de comentarios del post' }) commentsCount!: number;
+  @ApiProperty({
+    example: 2,
+    description: 'Total actualizado de comentarios del post',
+  })
+  commentsCount!: number;
 }
 
 export class PaginatedCommentsDto {
@@ -23,4 +34,10 @@ export class DeletedCommentDto {
   @ApiProperty() id!: string;
   @ApiProperty() postId!: string;
   @ApiProperty({ example: 1 }) commentsCount!: number;
+}
+
+export class CommentLikeDto {
+  @ApiProperty() commentId!: string;
+  @ApiProperty() liked!: boolean;
+  @ApiProperty() likesCount!: number;
 }

@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   ParseUUIDPipe,
   Post,
   Query,
@@ -52,6 +53,32 @@ export class ChatController {
   @ApiCreatedResponse({ type: ConversationResponseDto })
   create(@Req() req: AuthenticatedRequest, @Body() dto: CreateConversationDto) {
     return this.chat.crearConversacion(req.user.sub, dto.recipientId);
+  }
+
+  @Get('unread')
+  @ApiOkResponse({
+    schema: { type: 'object', properties: { count: { type: 'integer' } } },
+  })
+  unread(@Req() req: AuthenticatedRequest) {
+    return this.chat.unread(req.user.sub);
+  }
+
+  @Patch('conversations/:id/read')
+  @ApiOperation({ summary: 'Marcar mensajes de una conversación como leídos' })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        conversationId: { type: 'string' },
+        count: { type: 'integer' },
+      },
+    },
+  })
+  markRead(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    return this.chat.markRead(req.user.sub, id);
   }
 
   @Get('conversations')

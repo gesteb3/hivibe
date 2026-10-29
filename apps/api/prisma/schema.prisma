@@ -16,12 +16,15 @@ model User {
   bio          String?  @db.VarChar(500)
   avatarUrl    String?
   coverUrl     String?
+  statusMessage String? @db.VarChar(80)
+  profileTheme String @default("classic") @db.VarChar(20)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   posts     Post[]
   comments  Comment[]
   likes     Like[]
+  commentLikes CommentLike[]
   following Follow[]  @relation("UserFollowing")
   followers Follow[]  @relation("UserFollowers")
 
@@ -66,12 +69,28 @@ model Comment {
   postId    String
   authorId  String
   body      String
+  parentId  String?
   createdAt DateTime @default(now())
 
   post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  parent Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+  likes CommentLike[]
+
+  @@index([parentId, createdAt])
   @@index([postId, createdAt])
+}
+
+model CommentLike {
+  userId String
+  commentId String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  @@id([userId, commentId])
+  @@index([commentId])
 }
 
 model Follow {
@@ -90,6 +109,8 @@ model Conversation {
   id         String   @id @default(uuid())
   starterId  String
   receiverId String
+  starterReadAt DateTime?
+  receiverReadAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -123,6 +144,7 @@ model Notification {
   type      String   @db.VarChar(30)
   postId    String?
   messageId String?
+  commentId String?
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 

@@ -1,0 +1,1 @@
+import {Suspense} from 'react';import {MessagesView} from '@/components/realtime';export const metadata={title:'Mensajes'};export default function Messages(){return <Suspense fallback={<p className="loading-state">Abriendo tus mensajes…</p>}><MessagesView/></Suspense>}

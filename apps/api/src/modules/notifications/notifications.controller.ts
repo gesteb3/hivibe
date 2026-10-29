@@ -36,6 +36,14 @@ type AuthenticatedRequest = {
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
+  @Get('unread')
+  @ApiOkResponse({
+    schema: { type: 'object', properties: { count: { type: 'integer' } } },
+  })
+  unread(@Req() req: AuthenticatedRequest) {
+    return this.notificationsService.unread(req.user.sub);
+  }
+
   @Get()
   @ApiPagination()
   @ApiOkResponse({ type: [NotificationResponseDto] })

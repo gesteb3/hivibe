@@ -35,16 +35,16 @@ const assert = require('node:assert/strict');
       const migrations = await check.query(
         'SELECT count(*)::int AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
       );
-      assert.equal(migrations.rows[0].count, 4);
+      assert.equal(migrations.rows[0].count, 5);
       const tables = await check.query(
         "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_name <> '_prisma_migrations'",
       );
-      assert.equal(tables.rows[0].count, 8);
+      assert.equal(tables.rows[0].count, 9);
     } finally {
       await check.end();
     }
     console.log(
-      'OK: cuatro migraciones, ocho tablas y segunda ejecución sin pendientes en base vacía aislada.',
+      'OK: cinco migraciones, nueve tablas y segunda ejecución sin pendientes en base vacía aislada.',
     );
   } finally {
     if (created) await admin.query('DROP DATABASE "' + name + '"');

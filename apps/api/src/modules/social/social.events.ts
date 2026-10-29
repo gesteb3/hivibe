@@ -7,6 +7,8 @@ export const SOCIAL_EVENTS = {
   LIKE_CREATED: 'social.like.created',
   LIKE_REMOVED: 'social.like.removed',
   COMMENT_CREATED: 'social.comment.created',
+  COMMENT_LIKED: 'social.comment.liked',
+  COMMENT_CHANGED: 'social.comment.changed',
   COMMENT_REMOVED: 'social.comment.removed',
   FOLLOW_CREATED: 'social.follow.created',
   FOLLOW_REMOVED: 'social.follow.removed',
@@ -14,7 +16,31 @@ export const SOCIAL_EVENTS = {
   COUNTS_CHANGED: 'social.counts.changed',
 } as const;
 
-export interface LikeEvent { postId: string; postAuthorId: string; actorId: string }
-export interface CommentEvent { postId: string; commentId: string; postAuthorId: string; actorId: string }
-export interface FollowEvent { followerId: string; followingId: string }
-export interface CountsEvent { postId: string; likesCount: number; commentsCount: number }
+export interface LikeEvent {
+  postId: string;
+  postAuthorId: string;
+  actorId: string;
+}
+export interface CommentEvent {
+  postId: string;
+  commentId: string;
+  postAuthorId: string;
+  actorId: string;
+  parentId?: string | null;
+  parentAuthorId?: string;
+}
+export interface CommentLikeEvent {
+  postId: string;
+  commentId: string;
+  commentAuthorId: string;
+  actorId: string;
+}
+export interface FollowEvent {
+  followerId: string;
+  followingId: string;
+}
+export interface CountsEvent {
+  postId: string;
+  likesCount: number;
+  commentsCount: number;
+}

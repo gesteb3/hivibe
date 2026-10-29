@@ -4,7 +4,7 @@ Mini red social académica: perfiles, publicaciones con imágenes, likes, coment
 
 ## Estado
 
-Backend funcional en Docker local. El frontend de Gustavo todavía no se implementa. El despliegue público y el PDF final siguen pendientes; las direcciones localhost son exclusivamente de desarrollo.
+Frontend desplegado en Vercel, API en Render, PostgreSQL en Neon e imágenes en Cloudinary. También puede ejecutarse con Docker local. Las direcciones localhost son exclusivamente de desarrollo. El PDF de entrega sigue pendiente.
 
 | Recurso | Dirección |
 |---|---|
@@ -12,19 +12,22 @@ Backend funcional en Docker local. El frontend de Gustavo todavía no se impleme
 | API local / health | http://localhost:4300/api/health |
 | Swagger local | http://localhost:4300/api/docs |
 | OpenAPI JSON local | http://localhost:4300/api/docs-json |
-| Frontend público | Pendiente de implementación y publicación |
-| Backend / Swagger públicos | Pendientes de servidor y dominio |
+| Frontend público | https://hivibe-web.vercel.app |
+| Backend público | https://hivibe.onrender.com |
+| Health público | https://hivibe.onrender.com/api/health |
+| Swagger público | https://hivibe.onrender.com/api/docs |
+| OpenAPI JSON público | https://hivibe.onrender.com/api/docs-json |
 
 ## Tecnologías y arquitectura
 
-NestJS, TypeScript, PostgreSQL 17, Prisma 7, Argon2id, JWT HS256, Socket.IO, Docker Compose. Imágenes en volumen persistente Docker o Cloudinary. Frontend previsto: Next.js/React.
+NestJS, TypeScript, PostgreSQL 17, Prisma 7, Argon2id, JWT HS256, Socket.IO, Docker Compose. Imágenes en volumen persistente Docker o Cloudinary. Frontend: Next.js 16 / React 19.
 
 ```mermaid
 flowchart LR
-  Web["Frontend Next.js (pendiente)"] -->|REST + JWT| API["NestJS /api"]
+  Web["Next.js / Vercel"] -->|REST + JWT| API["NestJS / Render /api"]
   Web <-->|Socket.IO| API
-  API --> DB[("PostgreSQL")]
-  API --> Media["Volumen persistente / Cloudinary"]
+  API --> DB[("PostgreSQL / Neon")]
+  API --> Media["Cloudinary"]
   API --> Swagger["/api/docs"]
 ```
 
@@ -60,9 +63,9 @@ Ver [apps/api/.env.example](apps/api/.env.example). DATABASE_URL es para Node en
 
 JWT_SECRET: al menos 32 caracteres aleatorios. FRONTEND_URL: origen exacto, sin barra final; por defecto http://localhost:3000. MEDIA_PROVIDER=local usa MEDIA_LOCAL_PATH y MEDIA_PUBLIC_URL; HTTP solo se admite para localhost. En producción usar HTTPS. Con cloudinary configurar las tres CLOUDINARY_*; Compose ya las pasa al contenedor.
 
-Variables previstas para el futuro frontend (sin secretos):
+Variables del frontend (sin secretos), en apps/web/.env.local:
 ```dotenv
-NEXT_PUBLIC_API_URL=http://localhost:4300/api
+API_URL=http://localhost:4300/api
 NEXT_PUBLIC_SOCKET_URL=http://localhost:4300
 ```
 
@@ -92,6 +95,18 @@ El audit completo puede reportar seis alertas bajas transitivas de deepmerge/Jes
 
 ## Despliegue y entrega
 
-Ver [DEPLOY.md](apps/api/DEPLOY.md), que incluye un Compose opcional con Caddy para un VPS. Tener Docker local no publica la aplicación en Internet. Después de disponer de servidor/dominio, verificar HTTPS, /api/health, /api/docs y Socket.IO desde otra red, e incorporar URLs reales aquí.
+El despliegue público usa la rama `codex/profile-comments-alerts` del repositorio. Vercel compila `apps/web` como Next.js; Render construye el Dockerfile de `apps/api` y aplica las migraciones Prisma al arrancar. Neon conserva los datos y Cloudinary almacena las imágenes fuera del disco efímero de Render.
 
-Pendientes del curso: frontend responsive conectado, publicación web/API, README con URLs verificadas y PDF con nombres/carnés confirmados, arquitectura, capturas reales y enlaces. No se inventan datos personales ni evidencia de producción.
+En Vercel configurar `API_URL=https://hivibe.onrender.com/api` y `NEXT_PUBLIC_SOCKET_URL=https://hivibe.onrender.com`. En Render configurar `DATABASE_URL` con la conexión privada de Neon, `JWT_SECRET` aleatorio, `FRONTEND_URL=https://hivibe-web.vercel.app`, `MEDIA_PROVIDER=cloudinary` y las tres variables `CLOUDINARY_*`. Los secretos se guardan en los paneles de los proveedores; nunca en Git. Aplicar un nuevo despliegue al modificar variables.
+
+La documentación pública se abre directamente en [Swagger](https://hivibe.onrender.com/api/docs); para rutas protegidas, iniciar sesión mediante la API y usar el token con el botón Authorize.
+
+Verificados el 29 de octubre de 2026: inicio y registro públicos, health directo y a través del frontend, Swagger/OpenAPI y apertura de Socket.IO desde el dominio de Vercel. La subida de imagen en producción fue confirmada por Gustavo. Queda por comprobar el flujo completo entre dos cuentas desde dispositivos distintos.
+
+Render Free puede suspender la API tras inactividad; la primera visita puede tardar aproximadamente un minuto. Antes de la exposición abrir la aplicación y comprobar el health. Los planes gratuitos tienen límites de uso.
+
+Ver [DEPLOY.md](apps/api/DEPLOY.md) para la alternativa de VPS con Caddy. Pendiente de entrega: PDF con nombres/carnés confirmados, arquitectura, capturas reales y enlaces.
+
+## Frontend local
+
+Desde apps/web: npm ci y npm run dev. Abrir http://localhost:3000 con la API Docker activa. Ver [documentación del frontend](apps/web/README.md) para rutas, sesión y pruebas de navegador.

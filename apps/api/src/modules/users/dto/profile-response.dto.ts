@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class PublicProfileDto {
+  @ApiProperty({ nullable: true, maxLength: 80 }) statusMessage!: string | null;
+  @ApiProperty({ enum: ['classic', 'ocean', 'rose', 'forest'] })
+  profileTheme!: string;
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty({ example: 'mi_pana' }) username!: string;
   @ApiProperty({ example: 'Mi Pana' }) displayName!: string;

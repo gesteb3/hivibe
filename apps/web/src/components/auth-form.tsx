@@ -1,0 +1,16 @@
+'use client';
+import Link from 'next/link';
+import {useState} from 'react';
+import {useRouter} from 'next/navigation';
+import {ArrowUpRight,Eye,EyeOff,LoaderCircle} from 'lucide-react';
+import {Brand} from './brand';
+import {useSession} from './session';
+import {api} from '@/lib/api';
+export function AuthForm({register=false}:{register?:boolean}){
+ const router=useRouter();const{refresh}=useSession();const[busy,setBusy]=useState(false),[error,setError]=useState(''),[show,setShow]=useState(false);
+ async function submit(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setBusy(true);setError('');const data=new FormData(event.currentTarget);const email=String(data.get('email')).trim(),password=String(data.get('password'));try{if(register)await api('/auth/register',{method:'POST',body:{username:String(data.get('username')).trim(),displayName:String(data.get('displayName')).trim(),email,password}});await api('/auth/login',{method:'POST',body:{email,password}});await refresh();router.replace('/feed')}catch(e){setError(e instanceof Error?e.message:'Intenta de nuevo.')}finally{setBusy(false)}}
+ return <div className="auth-page"><header className="public-header"><Brand/><nav><Link href="/">Volver al inicio <ArrowUpRight size={14}/></Link></nav></header><main className="auth-grid" id="contenido"><aside className="auth-art"><h1>Fotos.<br/>Publicaciones.<br/><em>Mensajes.</em></h1><p>Publica contenido, sigue a tus cuates y conversa por mensajes.</p><span className="giant-star" aria-hidden="true">✳</span></aside><div className="auth-form"><h2>{register?'Crear cuenta':'Iniciar sesión'}</h2><p>{register?'Completa tus datos para registrarte.':'Ingresa tu correo y contraseña.'}</p>{error&&<p role="alert" className="error-message">{error}</p>}<form onSubmit={submit}>
+{register&&<><label className="field"><span>¿Cómo te llamas?</span><input name="displayName" placeholder="Tu nombre" autoComplete="name" required minLength={2} maxLength={80}/></label><label className="field"><span>Tu alias</span><input name="username" placeholder="ej. luna_cosmica" autoComplete="username" required minLength={3} maxLength={30} pattern="[A-Za-z0-9_]+"/><small className="muted">Letras, números y guion bajo. Sin espacios.</small></label></>}
+<label className="field"><span>Correo electrónico</span><input name="email" type="email" autoComplete="email" placeholder="tu@correo.com" required maxLength={254}/></label><label className="field"><span>Contraseña</span><span className="auth-password"><input name="password" type={show?'text':'password'} autoComplete={register?'new-password':'current-password'} placeholder={register?'Al menos 8 caracteres':'Tu contraseña'} required minLength={8} maxLength={128}/><button type="button" className="icon-button" onClick={()=>setShow(!show)} aria-label={show?'Ocultar contraseña':'Mostrar contraseña'}>{show?<EyeOff size={16}/>:<Eye size={16}/>}</button></span></label>
+<button className="btn btn-primary" disabled={busy}>{busy?<><LoaderCircle size={16}/> Procesando…</>:<>{register?'Crear cuenta':'Iniciar sesión'}<ArrowUpRight size={17}/></>}</button></form><div className="auth-switch">{register?'¿Ya tienes cuenta?':'¿No tienes cuenta?'} <Link href={register?'/login':'/registro'}>{register?'Inicia sesión':'Regístrate'}</Link></div></div></main></div>
+}
