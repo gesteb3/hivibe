@@ -198,15 +198,15 @@ export function MessagesView() {
   }
 
   return <div className="stack messages-view">
-    <div className="section-title"><div><p className="eyebrow">DE CUATE A CUATE</p><h1>Tu bandeja de secretos<span className="accent">.</span></h1><p className="muted">Una ventana abierta a tus mejores conversaciones.</p></div><MessageCircle size={32} aria-hidden="true" /></div>
-    <div className="panel chat-new"><div className="panel-heading"><span><Plus size={16} /> Nueva conversación</span><span className="muted">Sin vueltas. Solo escribe.</span></div>
+    <div className="section-title"><div><h1>Mensajes</h1></div><MessageCircle size={32} aria-hidden="true" /></div>
+    <div className="panel chat-new"><div className="panel-heading"><span><Plus size={16} /> Nueva conversación</span></div>
       <form className="panel-body form-row" onSubmit={findPana}><label className="sr-only" htmlFor="chat-username">Alias exacto de tu cuate</label><input id="chat-username" className="field" autoComplete="off" placeholder="@alias de tu cuate" value={username} onChange={event => setUsername(event.target.value)} maxLength={30} required /><button className="btn btn-primary" disabled={starting || !username.trim()}>{starting ? <LoaderCircle size={16} className="spin" /> : <MessageSquare size={16} />} Escribir</button></form>
       {startError && <p className="error-message" role="alert">{startError}</p>}
     </div>
     <section className={`panel chat-layout${activeId ? " has-active-chat" : ""}`} aria-label="Mensajes privados">
       <aside className="conversation-list"><div className="panel-heading"><span>Mis conversaciones</span><span className="muted">{conversations.length}</span></div>
         {loading ? <div className="loading-state" role="status"><LoaderCircle className="spin" size={20} /> Cargando tus conversaciones…</div>
-          : conversations.length === 0 ? <div className="empty-state"><MessageCircle size={28} /><h3>Rompe el hielo</h3><p className="muted">Busca el alias de un cuate arriba y dile qué onda.</p></div>
+          : conversations.length === 0 ? <div className="empty-state"><MessageCircle size={28} /><h3>Sin conversaciones</h3><p className="muted">Busca un usuario por su alias para iniciar una conversación.</p></div>
           : conversations.map(conversation => { const person = otherPerson(conversation); return <button key={conversation.id} className={`conversation-item${activeId === conversation.id ? " active" : ""}`} onClick={() => selectConversation(conversation.id)} aria-current={activeId === conversation.id ? "true" : undefined}><ChatAvatar person={person} /><span className="conversation-copy"><strong>{person.displayName || person.username}</strong><span className="muted">{previews[conversation.id] || `@${person.username}`}</span></span></button>; })}
       </aside>
       <div className="chat-main">
@@ -215,22 +215,22 @@ export function MessagesView() {
           <div className="message-list" ref={listRef} role="log" aria-label={`Mensajes con ${partner.displayName || partner.username}`} aria-live="polite" aria-relevant="additions">
             {hasOlder && <button className="btn btn-small history-button" onClick={() => void loadOlder()} disabled={olderLoading || historyLoading}>{olderLoading ? <LoaderCircle size={14} className="spin" /> : <ArrowDown size={14} />} Mensajes anteriores</button>}
             {historyLoading && <p className="loading-state" role="status"><LoaderCircle size={18} className="spin" /> Recuperando historial…</p>}
-            {!historyLoading && messages.length === 0 && <div className="empty-state"><Sparkles size={28} /><h3>Todo empieza con un «hola»</h3><p className="muted">Este es tu espacio para hablar con {partner.displayName || partner.username}.</p></div>}
+            {!historyLoading && messages.length === 0 && <div className="empty-state"><Sparkles size={28} /><h3>No hay mensajes</h3><p className="muted">Escribe un mensaje a {partner.displayName || partner.username}.</p></div>}
             {messages.map(message => <div key={message.id} className={`message-bubble${message.senderId === user?.id ? " mine" : ""}`}><p>{message.content}</p><time dateTime={message.createdAt} title={fullDate(message.createdAt)}>{time(message.createdAt)}{message.senderId === user?.id && <Check size={12} aria-label="Guardado" />}</time></div>)}
           </div>
           {error && <div className="error-message" role="alert">{error} <button className="text-button" onClick={() => void loadHistory(activeId)}>Reintentar</button></div>}
-          <form className="chat-compose" onSubmit={sendMessage}><label className="sr-only" htmlFor="chat-content">Tu mensaje</label><textarea id="chat-content" className="field" placeholder="Escribe algo que merezca un :)" rows={2} value={draft} maxLength={2000} onChange={event => setDraft(event.target.value)} required /><button className="btn btn-primary" disabled={sending || !draft.trim() || historyLoading} aria-label="Enviar mensaje">{sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}<span>Enviar</span></button><div className="chat-compose-meta"><span className="muted">{draft.length}/2000</span>{sendError && <span className="error-message" role="alert">{sendError}</span>}</div></form>
-        </> : <div className="empty-state chat-welcome"><div className="chat-welcome-icon"><MessageCircle size={44} /><Sparkles size={20} /></div><p className="eyebrow">MENOS SCROLL, MÁS CONVERSACIÓN</p><h2>Hay cosas que se cuentan<br />entre cuates.</h2><p className="muted">Elige una conversación o empieza una nueva.<br />Tus mensajes se guardan para cuando vuelvas.</p>{error && <p className="error-message" role="alert">{error} <button className="text-button" onClick={() => { setError(""); void loadConversations().catch(error => setError(errorText(error))); }}>Reintentar</button></p>}</div>}
+          <form className="chat-compose" onSubmit={sendMessage}><label className="sr-only" htmlFor="chat-content">Tu mensaje</label><textarea id="chat-content" className="field" placeholder="Escribe un mensaje" rows={2} value={draft} maxLength={2000} onChange={event => setDraft(event.target.value)} required /><button className="btn btn-primary" disabled={sending || !draft.trim() || historyLoading} aria-label="Enviar mensaje">{sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}<span>Enviar</span></button><div className="chat-compose-meta"><span className="muted">{draft.length}/2000</span>{sendError && <span className="error-message" role="alert">{sendError}</span>}</div></form>
+        </> : <div className="empty-state chat-welcome"><div className="chat-welcome-icon"><MessageCircle size={44} /><Sparkles size={20} /></div><h2>Selecciona una conversación</h2><p className="muted">Busca un usuario por su alias para enviarle un mensaje.</p>{error && <p className="error-message" role="alert">{error} <button className="text-button" onClick={() => { setError(""); void loadConversations().catch(error => setError(errorText(error))); }}>Reintentar</button></p>}</div>}
       </div>
     </section>
   </div>;
 }
 
 const noticeContent = {
-  LIKE: { Icon: Heart, text: "le dio like a tu publicación", category: "Un poquito de amor", className: "notice-like" },
-  COMMENT: { Icon: MessageSquare, text: "comentó tu publicación", category: "La conversación sigue", className: "notice-comment" },
-  FOLLOW: { Icon: UserPlus, text: "ahora es tu seguidor", category: "Tu círculo crece", className: "notice-follow" },
-  MESSAGE: { Icon: MessageCircle, text: "te envió un mensaje", category: "Tienes algo que leer", className: "notice-message" },
+  LIKE: { Icon: Heart, text: "reaccionó a tu publicación", category: "Nitido", className: "notice-like" },
+  COMMENT: { Icon: MessageSquare, text: "comentó tu publicación", category: "Comentario", className: "notice-comment" },
+  FOLLOW: { Icon: UserPlus, text: "ahora es tu seguidor", category: "Nuevo seguidor", className: "notice-follow" },
+  MESSAGE: { Icon: MessageCircle, text: "te envió un mensaje", category: "Mensaje", className: "notice-message" },
 };
 
 export function NotificationsView() {
@@ -293,11 +293,11 @@ export function NotificationsView() {
 
   const unread = notices.filter(notice => !notice.isRead).length;
   return <div className="stack notifications-view">
-    <div className="section-title"><div><p className="eyebrow">TU PEQUEÑO CENTRO DEL UNIVERSO</p><h1>Alguien se acordó de ti<span className="accent">.</span></h1><p className="muted">Likes, nuevos cuates y conversaciones que siguen.</p></div><Bell size={32} aria-hidden="true" /></div>
+    <div className="section-title"><div><h1>Notificaciones</h1></div><Bell size={32} aria-hidden="true" /></div>
     <section className="panel"><div className="panel-heading"><span><Sparkles size={16} /> Tus notificaciones</span><span className="muted">{unread ? `${unread} sin leer en esta lista` : "Todo al día"}</span></div>
       {error && <div className="error-message" role="alert">{error} <button className="text-button" onClick={() => { setError(""); void refresh().catch(error => setError(errorText(error))); }}>Reintentar</button></div>}
-      {loading ? <div className="loading-state" role="status"><LoaderCircle size={20} className="spin" /> Buscando novedades…</div>
-        : notices.length === 0 ? <div className="empty-state"><Bell size={36} /><h2>Por aquí está tranquilo</h2><p className="muted">Cuando alguien interactúe contigo, te enterarás aquí.</p><Link className="btn btn-primary" href="/feed">Ir al muro <ArrowLeft size={16} /></Link></div>
+      {loading ? <div className="loading-state" role="status"><LoaderCircle size={20} className="spin" /> Cargando notificaciones…</div>
+        : notices.length === 0 ? <div className="empty-state"><Bell size={36} /><h2>No hay notificaciones</h2><p className="muted">Las reacciones, comentarios, seguidores y mensajes aparecerán aquí.</p><Link className="btn btn-primary" href="/feed">Ir al muro <ArrowLeft size={16} /></Link></div>
         : <div className="notification-list">{notices.map(notice => {
           const content = noticeContent[notice.type] || noticeContent.MESSAGE;
           const Icon = content.Icon;

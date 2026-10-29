@@ -16,7 +16,7 @@ async function login(page: Page, email: string) {
   await page.goto('/login');
   await page.getByLabel('Correo electrónico').fill(email);
   await page.locator('input[name="password"]').fill(password);
-  await page.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   await expect(page).toHaveURL(/\/feed/);
   await expect(page.locator('#new-post')).toBeVisible();
 }
@@ -43,8 +43,8 @@ test('la bienvenida se renderiza sin JavaScript y cabe en un celular', async ({ 
   const page = await context.newPage();
   try {
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Tu internet.');
-    await expect(page.getByRole('link', { name: 'Aquí empieza mi vibe' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Comparte.');
+    await expect(page.getByRole('link', { name: 'Crear cuenta' }).first()).toBeVisible();
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(hasOverflow).toBe(false);
   } finally {
@@ -55,7 +55,7 @@ test('la bienvenida se renderiza sin JavaScript y cabe en un celular', async ({ 
 test('dos cuentas usan la red social real: registro, publicación, interacción, perfil y chat', async ({ page, browser, request }) => {
   const secondContext = await browser.newContext();
   const pageB = await secondContext.newPage();
-  const postText = 'Vibra de exposición ' + suffix;
+  const postText = 'Publicación de prueba ' + suffix;
   const commentText = 'Comentario de cuate ' + suffix;
   const messageText = 'Mensaje privado en vivo ' + suffix;
   let postId: string | undefined;
@@ -66,7 +66,7 @@ test('dos cuentas usan la red social real: registro, publicación, interacción,
     await page.locator('input[name="username"]').fill(first.username);
     await page.getByLabel('Correo electrónico').fill(first.email);
     await page.locator('input[name="password"]').fill(password);
-    await page.getByRole('button', { name: 'Crear mi espacio' }).click();
+    await page.getByRole('button', { name: 'Crear cuenta' }).click();
     await expect(page).toHaveURL(/\/feed/);
     await expect(page.locator('#new-post')).toBeVisible();
 
@@ -104,10 +104,10 @@ test('dos cuentas usan la red social real: registro, publicación, interacción,
     const postB = pageB.locator('#post-' + postId);
     await expect(postB).toContainText(postText);
     await expect(postB.getByRole('button', { name: 'Eliminar publicación', exact: true })).toHaveCount(0);
-    await postB.getByRole('button', { name: /Me vibra/ }).click();
-    await expect(postB.getByRole('button', { name: /Me vibra/ })).toHaveAttribute('aria-pressed', 'true');
+    await postB.getByRole('button', { name: /Nitido/ }).click();
+    await expect(postB.getByRole('button', { name: /Nitido/ })).toHaveAttribute('aria-pressed', 'true');
     // Este contador debe cambiar en A por Socket.IO, sin recargar A.
-    await expect(postA.getByRole('button', { name: /Me vibra/ })).toContainText('1');
+    await expect(postA.getByRole('button', { name: /Nitido/ })).toContainText('1');
     await postB.getByRole('button', { name: /Comentarios/ }).click();
     await postB.getByLabel('Escribe un comentario').fill(commentText);
     await postB.getByRole('button', { name: 'Enviar comentario' }).click();
@@ -122,9 +122,9 @@ test('dos cuentas usan la red social real: registro, publicación, interacción,
 
     await page.goto('/perfil/' + first.username);
     await page.getByRole('button', { name: 'Editar mi perfil' }).click();
-    await page.getByLabel('Sobre mí', { exact: true }).fill('Mi rincón retro ' + suffix);
-    await page.getByRole('button', { name: 'Guardar mi estilo' }).click();
-    await expect(page.locator('.profile-bio')).toHaveText('Mi rincón retro ' + suffix);
+    await page.getByLabel('Sobre mí', { exact: true }).fill('Biografía de prueba ' + suffix);
+    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+    await expect(page.locator('.profile-bio')).toHaveText('Biografía de prueba ' + suffix);
     await page.screenshot({ path: path.join(artifactDir, 'perfil-desktop.png'), fullPage: true });
 
     const publicContext = await browser.newContext({ javaScriptEnabled: false });
@@ -132,8 +132,8 @@ test('dos cuentas usan la red social real: registro, publicación, interacción,
       const publicPage = await publicContext.newPage();
       await publicPage.goto('/perfil/' + first.username);
       await expect(publicPage.getByRole('heading', { level: 1, name: first.displayName })).toBeVisible();
-      await expect(publicPage.getByText('Mi rincón retro ' + suffix, { exact: true })).toBeVisible();
-      await expect(publicPage.getByRole('link', { name: 'Crear mi espacio', exact: true })).toBeVisible();
+      await expect(publicPage.getByText('Biografía de prueba ' + suffix, { exact: true })).toBeVisible();
+      await expect(publicPage.getByRole('link', { name: 'Crear cuenta', exact: true })).toBeVisible();
     } finally { await publicContext.close(); }
 
     const forgedLogout = await page.request.post('/api/logout', { headers: { Origin: 'https://ajeno.invalid' } });
@@ -141,8 +141,8 @@ test('dos cuentas usan la red social real: registro, publicación, interacción,
     expect((await page.context().cookies()).some(value => value.name === 'hv_session')).toBe(true);
 
     await page.goto('/notificaciones');
-    await expect(page.locator('.notification-item').filter({ hasText: 'le dio like a tu publicación' })).toContainText(second.displayName);
-    const likeNotice = page.locator('.notification-item').filter({ hasText: 'le dio like a tu publicación' });
+    await expect(page.locator('.notification-item').filter({ hasText: 'reaccionó a tu publicación' })).toContainText(second.displayName);
+    const likeNotice = page.locator('.notification-item').filter({ hasText: 'reaccionó a tu publicación' });
     await likeNotice.getByRole('button', { name: 'Marcar notificación como leída' }).click();
     await expect(likeNotice).not.toHaveClass(/unread/);
 
