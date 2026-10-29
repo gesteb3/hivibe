@@ -1,1 +1,0 @@
-import {ProfileView} from '@/components/social';export async function generateMetadata({params}:{params:Promise<{username:string}>}){return {title:'Perfil de @'+(await params).username}}export default async function Profile({params}:{params:Promise<{username:string}>}){return <ProfileView username={(await params).username}/>}

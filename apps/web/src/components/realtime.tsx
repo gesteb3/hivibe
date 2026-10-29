@@ -101,7 +101,7 @@ export function MessagesView() {
   }, [loadHistory]);
 
   const startConversation = useCallback(async (id: string) => {
-    if (id === user?.id) throw new Error("Elige a otro pana para empezar a conversar.");
+    if (id === user?.id) throw new Error("Elige a otro cuate para empezar a conversar.");
     const conversation = await api<{ id: string }>("/chat/conversations", { method: "POST", body: { recipientId: id } });
     await loadConversations();
     selectConversation(conversation.id);
@@ -198,15 +198,15 @@ export function MessagesView() {
   }
 
   return <div className="stack messages-view">
-    <div className="section-title"><div><p className="eyebrow">DE PANA A PANA</p><h1>Tu bandeja de secretos<span className="accent">.</span></h1><p className="muted">Una ventana abierta a tus mejores conversaciones.</p></div><MessageCircle size={32} aria-hidden="true" /></div>
+    <div className="section-title"><div><p className="eyebrow">DE CUATE A CUATE</p><h1>Tu bandeja de secretos<span className="accent">.</span></h1><p className="muted">Una ventana abierta a tus mejores conversaciones.</p></div><MessageCircle size={32} aria-hidden="true" /></div>
     <div className="panel chat-new"><div className="panel-heading"><span><Plus size={16} /> Nueva conversación</span><span className="muted">Sin vueltas. Solo escribe.</span></div>
-      <form className="panel-body form-row" onSubmit={findPana}><label className="sr-only" htmlFor="chat-username">Alias exacto de tu pana</label><input id="chat-username" className="field" autoComplete="off" placeholder="@alias de tu pana" value={username} onChange={event => setUsername(event.target.value)} maxLength={30} required /><button className="btn btn-primary" disabled={starting || !username.trim()}>{starting ? <LoaderCircle size={16} className="spin" /> : <MessageSquare size={16} />} Escribir</button></form>
+      <form className="panel-body form-row" onSubmit={findPana}><label className="sr-only" htmlFor="chat-username">Alias exacto de tu cuate</label><input id="chat-username" className="field" autoComplete="off" placeholder="@alias de tu cuate" value={username} onChange={event => setUsername(event.target.value)} maxLength={30} required /><button className="btn btn-primary" disabled={starting || !username.trim()}>{starting ? <LoaderCircle size={16} className="spin" /> : <MessageSquare size={16} />} Escribir</button></form>
       {startError && <p className="error-message" role="alert">{startError}</p>}
     </div>
     <section className={`panel chat-layout${activeId ? " has-active-chat" : ""}`} aria-label="Mensajes privados">
       <aside className="conversation-list"><div className="panel-heading"><span>Mis conversaciones</span><span className="muted">{conversations.length}</span></div>
         {loading ? <div className="loading-state" role="status"><LoaderCircle className="spin" size={20} /> Cargando tus conversaciones…</div>
-          : conversations.length === 0 ? <div className="empty-state"><MessageCircle size={28} /><h3>Rompe el hielo</h3><p className="muted">Busca el alias de un pana arriba y dile qué onda.</p></div>
+          : conversations.length === 0 ? <div className="empty-state"><MessageCircle size={28} /><h3>Rompe el hielo</h3><p className="muted">Busca el alias de un cuate arriba y dile qué onda.</p></div>
           : conversations.map(conversation => { const person = otherPerson(conversation); return <button key={conversation.id} className={`conversation-item${activeId === conversation.id ? " active" : ""}`} onClick={() => selectConversation(conversation.id)} aria-current={activeId === conversation.id ? "true" : undefined}><ChatAvatar person={person} /><span className="conversation-copy"><strong>{person.displayName || person.username}</strong><span className="muted">{previews[conversation.id] || `@${person.username}`}</span></span></button>; })}
       </aside>
       <div className="chat-main">
@@ -220,7 +220,7 @@ export function MessagesView() {
           </div>
           {error && <div className="error-message" role="alert">{error} <button className="text-button" onClick={() => void loadHistory(activeId)}>Reintentar</button></div>}
           <form className="chat-compose" onSubmit={sendMessage}><label className="sr-only" htmlFor="chat-content">Tu mensaje</label><textarea id="chat-content" className="field" placeholder="Escribe algo que merezca un :)" rows={2} value={draft} maxLength={2000} onChange={event => setDraft(event.target.value)} required /><button className="btn btn-primary" disabled={sending || !draft.trim() || historyLoading} aria-label="Enviar mensaje">{sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}<span>Enviar</span></button><div className="chat-compose-meta"><span className="muted">{draft.length}/2000</span>{sendError && <span className="error-message" role="alert">{sendError}</span>}</div></form>
-        </> : <div className="empty-state chat-welcome"><div className="chat-welcome-icon"><MessageCircle size={44} /><Sparkles size={20} /></div><p className="eyebrow">MENOS SCROLL, MÁS CONVERSACIÓN</p><h2>Hay cosas que se cuentan<br />entre panas.</h2><p className="muted">Elige una conversación o empieza una nueva.<br />Tus mensajes se guardan para cuando vuelvas.</p>{error && <p className="error-message" role="alert">{error} <button className="text-button" onClick={() => { setError(""); void loadConversations().catch(error => setError(errorText(error))); }}>Reintentar</button></p>}</div>}
+        </> : <div className="empty-state chat-welcome"><div className="chat-welcome-icon"><MessageCircle size={44} /><Sparkles size={20} /></div><p className="eyebrow">MENOS SCROLL, MÁS CONVERSACIÓN</p><h2>Hay cosas que se cuentan<br />entre cuates.</h2><p className="muted">Elige una conversación o empieza una nueva.<br />Tus mensajes se guardan para cuando vuelvas.</p>{error && <p className="error-message" role="alert">{error} <button className="text-button" onClick={() => { setError(""); void loadConversations().catch(error => setError(errorText(error))); }}>Reintentar</button></p>}</div>}
       </div>
     </section>
   </div>;
@@ -293,7 +293,7 @@ export function NotificationsView() {
 
   const unread = notices.filter(notice => !notice.isRead).length;
   return <div className="stack notifications-view">
-    <div className="section-title"><div><p className="eyebrow">TU PEQUEÑO CENTRO DEL UNIVERSO</p><h1>Alguien se acordó de ti<span className="accent">.</span></h1><p className="muted">Likes, nuevos panas y conversaciones que siguen.</p></div><Bell size={32} aria-hidden="true" /></div>
+    <div className="section-title"><div><p className="eyebrow">TU PEQUEÑO CENTRO DEL UNIVERSO</p><h1>Alguien se acordó de ti<span className="accent">.</span></h1><p className="muted">Likes, nuevos cuates y conversaciones que siguen.</p></div><Bell size={32} aria-hidden="true" /></div>
     <section className="panel"><div className="panel-heading"><span><Sparkles size={16} /> Tus notificaciones</span><span className="muted">{unread ? `${unread} sin leer en esta lista` : "Todo al día"}</span></div>
       {error && <div className="error-message" role="alert">{error} <button className="text-button" onClick={() => { setError(""); void refresh().catch(error => setError(errorText(error))); }}>Reintentar</button></div>}
       {loading ? <div className="loading-state" role="status"><LoaderCircle size={20} className="spin" /> Buscando novedades…</div>
