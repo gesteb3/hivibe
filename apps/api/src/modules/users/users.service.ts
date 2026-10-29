@@ -16,6 +16,8 @@ const profileSelect = {
   bio: true,
   avatarUrl: true,
   coverUrl: true,
+  statusMessage: true,
+  profileTheme: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -50,6 +52,8 @@ export class UsersService {
           bio: dto.bio,
           avatarUrl: dto.avatarUrl,
           coverUrl: dto.coverUrl,
+          statusMessage: dto.statusMessage?.trim(),
+          profileTheme: dto.profileTheme,
         },
         select: profileSelect,
       });
@@ -77,6 +81,8 @@ export class UsersService {
         bio: true,
         avatarUrl: true,
         coverUrl: true,
+        statusMessage: true,
+        profileTheme: true,
         createdAt: true,
         _count: { select: { posts: true, followers: true, following: true } },
       },

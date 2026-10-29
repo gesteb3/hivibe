@@ -1,0 +1,1 @@
+import {NotificationsView} from '@/components/realtime';export const metadata={title:'Notificaciones'};export default function Notices(){return <NotificationsView/>}

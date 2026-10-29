@@ -1,0 +1,1 @@
+import {CuatesView} from '@/components/social';export const metadata={title:'Mis Cuates'};export default function Cuates(){return <CuatesView/>}

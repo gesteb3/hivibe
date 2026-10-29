@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { NotificationsService } from '../notifications/notifications.service';
 import { MessageHistoryQueryDto } from './dto/chat.dto';
 import { AUTHOR_SELECT } from '../social/post.mapper';
 
@@ -15,7 +14,6 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
-    private readonly notifications: NotificationsService,
   ) {}
 
   async crearConversacion(usuarioId: string, destinatarioId: string) {
@@ -125,6 +123,7 @@ export class ChatService {
             senderId: usuarioId,
             content: texto,
           },
+          include: { sender: { select: AUTHOR_SELECT } },
         });
 
         const conversacion = await tx.conversation.update({
@@ -144,18 +143,41 @@ export class ChatService {
 
     this.realtime.enviarAUsuario(usuarioId, 'chat:new', mensaje);
 
-    // La entrega del mensaje no debe fallar si la notificacion tiene un problema.
-    try {
-      await this.notifications.notifyMessage(
-        destinatarioId,
-        usuarioId,
-        mensaje.id,
-      );
-    } catch {
-      // El mensaje ya fue persistido y enviado por Socket.IO.
-    }
+    void this.unread(destinatarioId)
+      .then((value) =>
+        this.realtime.enviarAUsuario(destinatarioId, 'chat:unread', value),
+      )
+      .catch(() => {});
 
     return mensaje;
+  }
+
+  async unread(userId: string) {
+    const rows = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count FROM "Message" m JOIN "Conversation" c ON c.id=m."conversationId"
+      WHERE (c."starterId"=${userId} OR c."receiverId"=${userId}) AND m."senderId"<>${userId}
+      AND (CASE WHEN c."starterId"=${userId} THEN c."starterReadAt" ELSE c."receiverReadAt" END IS NULL
+        OR m."createdAt" > CASE WHEN c."starterId"=${userId} THEN c."starterReadAt" ELSE c."receiverReadAt" END)
+    `;
+    return { count: Number(rows[0]?.count ?? 0) };
+  }
+
+  async markRead(userId: string, conversationId: string) {
+    const conversation = await this.verificarParticipante(
+      userId,
+      conversationId,
+    );
+    if (conversation.starterId === userId) {
+      await this.prisma
+        .$executeRaw`UPDATE "Conversation" SET "starterReadAt"=clock_timestamp() WHERE id=${conversationId}`;
+    } else {
+      await this.prisma
+        .$executeRaw`UPDATE "Conversation" SET "receiverReadAt"=clock_timestamp() WHERE id=${conversationId}`;
+    }
+    const unread = await this.unread(userId);
+    this.realtime.enviarAUsuario(userId, 'chat:read', { conversationId });
+    this.realtime.enviarAUsuario(userId, 'chat:unread', unread);
+    return { conversationId, ...unread };
   }
 
   private async verificarParticipante(

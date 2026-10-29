@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsOptional,
+  IsIn,
   IsString,
   Validate,
   Matches,
@@ -10,6 +11,17 @@ import {
 import { MediaUrlValidator } from '../../media/media-url.validator';
 
 export class UpdateProfileDto {
+  @ApiPropertyOptional({ maxLength: 80, example: 'Estudiando' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  statusMessage?: string;
+
+  @ApiPropertyOptional({ enum: ['classic', 'ocean', 'rose', 'forest'] })
+  @IsOptional()
+  @IsIn(['classic', 'ocean', 'rose', 'forest'])
+  profileTheme?: string;
+
   @ApiPropertyOptional({
     example: 'Mi perfil HiVibe',
     description: 'Nombre visible en el perfil',
