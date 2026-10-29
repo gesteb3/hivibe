@@ -78,6 +78,7 @@ export class UsersService {
         avatarUrl: true,
         coverUrl: true,
         createdAt: true,
+        _count: { select: { posts: true, followers: true, following: true } },
       },
     });
 
@@ -85,6 +86,26 @@ export class UsersService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    return user;
+    const { _count, ...profile } = user;
+    return {
+      ...profile,
+      postsCount: _count.posts,
+      followersCount: _count.followers,
+      followingCount: _count.following,
+    };
+  }
+
+  async relationship(username: string, userId: string) {
+    const target = await this.prisma.user.findUnique({
+      where: { username: username.toLowerCase() },
+      select: { id: true },
+    });
+    if (!target) throw new NotFoundException('Usuario no encontrado');
+    const follow = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: { followerId: userId, followingId: target.id },
+      },
+    });
+    return { userId: target.id, isFollowedByMe: !!follow };
   }
 }

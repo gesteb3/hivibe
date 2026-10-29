@@ -1,97 +1,89 @@
-
 import {
   Body,
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
-  ApiBody,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-
 import { ChatService } from './chat.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
-import type { AuthenticatedRequest } from '../auth/guards/jwt-auth/jwt-auth.guard';
+import {
+  JwtAuthGuard,
+  type AuthenticatedRequest,
+} from '../auth/guards/jwt-auth/jwt-auth.guard';
+import {
+  CreateConversationDto,
+  CreateMessageDto,
+  MessageHistoryQueryDto,
+} from './dto/chat.dto';
+import {
+  ConversationResponseDto,
+  ConversationWithUsersDto,
+  MessageResponseDto,
+} from './dto/chat-response.dto';
 
 @ApiTags('Chat')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiBadRequestResponse({ description: 'Datos inválidos' })
+@ApiUnauthorizedResponse({ description: 'Token ausente o expirado' })
+@ApiForbiddenResponse({ description: 'No eres participante' })
+@ApiNotFoundResponse({ description: 'Recurso no encontrado' })
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chat: ChatService) {}
 
   @Post('conversations')
-  @ApiOperation({ summary: 'Crear o recuperar una conversación privada' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['recipientId'],
-      properties: {
-        recipientId: {
-          type: 'string',
-          example: 'uuid-del-usuario-destinatario',
-        },
-      },
-    },
-  })
-  crearConversacion(
-    @Req() request: AuthenticatedRequest,
-    @Body('recipientId') recipientId: string,
-  ) {
-    return this.chatService.crearConversacion(
-      request.user.sub,
-      recipientId,
-    );
+  @ApiOperation({ summary: 'Crear o recuperar conversación privada' })
+  @ApiCreatedResponse({ type: ConversationResponseDto })
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateConversationDto) {
+    return this.chat.crearConversacion(req.user.sub, dto.recipientId);
   }
 
   @Get('conversations')
-  @ApiOperation({ summary: 'Listar mis conversaciones' })
-  misConversaciones(@Req() request: AuthenticatedRequest) {
-    return this.chatService.misConversaciones(request.user.sub);
+  @ApiOkResponse({ type: [ConversationWithUsersDto] })
+  list(@Req() req: AuthenticatedRequest) {
+    return this.chat.misConversaciones(req.user.sub);
   }
 
   @Get('conversations/:id/messages')
-  @ApiOperation({ summary: 'Consultar historial de mensajes' })
-  obtenerMensajes(
-    @Req() request: AuthenticatedRequest,
-    @Param('id') conversationId: string,
+  @ApiOperation({
+    summary:
+      'Ventana reciente de mensajes; usar before para recuperar historial anterior',
+  })
+  @ApiOkResponse({
+    type: [MessageResponseDto],
+    description: 'Array en orden cronológico; vacío al terminar el historial.',
+  })
+  history(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Query() query: MessageHistoryQueryDto,
   ) {
-    return this.chatService.obtenerMensajes(
-      request.user.sub,
-      conversationId,
-    );
+    return this.chat.obtenerMensajes(req.user.sub, id, query);
   }
 
   @Post('conversations/:id/messages')
-  @ApiOperation({ summary: 'Enviar un mensaje privado' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['content'],
-      properties: {
-        content: {
-          type: 'string',
-          example: 'Hola, ¿cómo estás?',
-          maxLength: 2000,
-        },
-      },
-    },
-  })
-  enviarMensaje(
-    @Req() request: AuthenticatedRequest,
-    @Param('id') conversationId: string,
-    @Body('content') content: string,
+  @ApiCreatedResponse({ type: MessageResponseDto })
+  send(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() dto: CreateMessageDto,
   ) {
-    return this.chatService.enviarMensaje(
-      request.user.sub,
-      conversationId,
-      content,
-    );
+    return this.chat.enviarMensaje(req.user.sub, id, dto.content);
   }
 }

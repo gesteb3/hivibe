@@ -1,8 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsOptional, IsString, Validate, MaxLength } from 'class-validator';
+import { MediaUrlValidator } from '../../media/media-url.validator';
 
 export class CreatePostDto {
-  @ApiPropertyOptional({ example: '¡Qué onda, panas! Mi primer post en HiVibe 🔥', maxLength: 2000 })
+  @ApiPropertyOptional({
+    example: '¡Qué onda, panas! Mi primer post en HiVibe 🔥',
+    maxLength: 2000,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
@@ -10,9 +14,10 @@ export class CreatePostDto {
 
   @ApiPropertyOptional({
     description: 'URL HTTPS devuelta por POST /api/media/upload',
-    example: 'https://res.cloudinary.com/demo/image/upload/hivibe/posts/abc123.jpg',
+    example:
+      'https://res.cloudinary.com/demo/image/upload/hivibe/posts/abc123.jpg',
   })
   @IsOptional()
-  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @Validate(MediaUrlValidator)
   imageUrl?: string;
 }
