@@ -1,0 +1,1 @@
+'use client';export default function ErrorPage({reset}:{reset:()=>void}){return <main className="empty-state" id="contenido"><h1>Se nos cruzaron los cables.</h1><p>Intentemos recuperar tu espacio.</p><button className="btn btn-primary" onClick={reset}>Intentar otra vez</button></main>}

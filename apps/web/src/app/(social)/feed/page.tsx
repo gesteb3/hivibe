@@ -1,0 +1,1 @@
+import {Suspense} from 'react';import {FeedView} from '@/components/social';export const metadata={title:'Mi feed'};export default function Feed(){return <Suspense fallback={<p className="loading-state">Cargando tu feed…</p>}><FeedView/></Suspense>}

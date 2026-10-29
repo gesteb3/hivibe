@@ -1,0 +1,1 @@
+import {PanasView} from '@/components/social';export const metadata={title:'Mis Panas'};export default function Panas(){return <PanasView/>}
