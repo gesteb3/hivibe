@@ -244,7 +244,7 @@ export function MessagesView() {
 const noticeContent = {
   LIKE: { Icon: Heart, text: 'reaccionó a tu publicación', category: 'Nitido', className: 'notice-like' },
   COMMENT: { Icon: MessageSquare, text: 'comentó tu publicación', category: 'Comentario', className: 'notice-comment' },
-  COMMENT_REPLY: { Icon: MessageSquare, text: 'respondió a tu comentario', category: 'Respuesta', className: 'notice-comment' },
+  COMMENT_REPLY: { Icon: MessageSquare, text: 'respondió a un comentario', category: 'Respuesta', className: 'notice-comment' },
   COMMENT_LIKE: { Icon: Heart, text: 'reaccionó a tu comentario', category: 'Nitido en comentario', className: 'notice-like' },
   FOLLOW: { Icon: UserPlus, text: 'ahora es tu seguidor', category: 'Nuevo seguidor', className: 'notice-follow' },
 };
