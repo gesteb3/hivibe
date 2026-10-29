@@ -1,0 +1,1 @@
+import {AuthForm} from '@/components/auth-form';export const metadata={title:'Iniciar sesión'};export default function Login(){return <AuthForm/>}
