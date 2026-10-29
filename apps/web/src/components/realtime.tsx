@@ -10,7 +10,8 @@ import { useSession } from "@/components/session";
 type Actor = { id: string; username: string; displayName: string; avatarUrl?: string | null };
 type Conversation = { id: string; starterId: string; receiverId: string; starter: Actor; receiver: Actor; createdAt: string; updatedAt: string };
 type Message = { id: string; conversationId: string; senderId: string; content: string; createdAt: string };
-type Notice = { id: string; type: "LIKE" | "COMMENT" | "FOLLOW" | "MESSAGE"; actorId: string; actor: Actor; postId?: string | null; messageId?: string | null; isRead: boolean; createdAt: string };
+type NoticeType = "LIKE" | "COMMENT" | "FOLLOW" | "COMMENT_REPLY" | "COMMENT_LIKE";
+type Notice = { id: string; type: NoticeType; actorId: string; actor: Actor; postId?: string | null; commentId?: string | null; isRead: boolean; createdAt: string };
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Algo salió mal. Inténtalo otra vez.";
 const mergeMessages = (current: Message[], incoming: Message[]) => [...new Map([...current, ...incoming].map(message => [message.id, message])).values()]
@@ -27,7 +28,7 @@ function ChatAvatar({ person }: { person: Actor }) {
 }
 
 export function MessagesView() {
-  const { user } = useSession();
+  const { user, markConversationRead } = useSession();
   const search = useSearchParams();
   const recipientId = search.get("to");
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -54,6 +55,19 @@ export function MessagesView() {
   const otherPerson = useCallback((conversation: Conversation) => conversation.starterId === user?.id ? conversation.receiver : conversation.starter, [user?.id]);
   const active = conversations.find(conversation => conversation.id === activeId);
   const partner = active ? otherPerson(active) : null;
+
+  const markVisibleRead = useCallback(() => {
+    const id = activeRef.current;
+    if (!id || document.visibilityState !== "visible" || !document.hasFocus()) return;
+    void markConversationRead(id).catch(() => {});
+  }, [markConversationRead]);
+
+  useEffect(() => {
+    if (activeId && !historyLoading) markVisibleRead();
+    window.addEventListener("focus", markVisibleRead);
+    document.addEventListener("visibilitychange", markVisibleRead);
+    return () => { window.removeEventListener("focus", markVisibleRead); document.removeEventListener("visibilitychange", markVisibleRead); };
+  }, [activeId, historyLoading, markVisibleRead]);
 
   const loadConversations = useCallback(async () => {
     const result = await api<Conversation[]>("/chat/conversations");
@@ -123,7 +137,7 @@ export function MessagesView() {
     const receive = (event: Event) => {
       const message = (event as CustomEvent<Message>).detail;
       if (!message?.id) return;
-      if (activeRef.current === message.conversationId) setMessages(current => mergeMessages(current, [message]));
+      if (activeRef.current === message.conversationId) { setMessages(current => mergeMessages(current, [message])); markVisibleRead(); }
       setPreviews(current => ({ ...current, [message.conversationId]: message.content }));
       setConversations(current => current.map(conversation => conversation.id === message.conversationId
         ? { ...conversation, updatedAt: message.createdAt } : conversation).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
@@ -139,7 +153,7 @@ export function MessagesView() {
       window.removeEventListener("hivibe:message", receive);
       window.removeEventListener("hivibe:reconnect", reconnect);
     };
-  }, [user, loadConversations, loadHistory]);
+  }, [user?.id, loadConversations, loadHistory, markVisibleRead]);
 
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -226,90 +240,140 @@ export function MessagesView() {
   </div>;
 }
 
+
 const noticeContent = {
-  LIKE: { Icon: Heart, text: "reaccionó a tu publicación", category: "Nitido", className: "notice-like" },
-  COMMENT: { Icon: MessageSquare, text: "comentó tu publicación", category: "Comentario", className: "notice-comment" },
-  FOLLOW: { Icon: UserPlus, text: "ahora es tu seguidor", category: "Nuevo seguidor", className: "notice-follow" },
-  MESSAGE: { Icon: MessageCircle, text: "te envió un mensaje", category: "Mensaje", className: "notice-message" },
+  LIKE: { Icon: Heart, text: 'reaccionó a tu publicación', category: 'Nitido', className: 'notice-like' },
+  COMMENT: { Icon: MessageSquare, text: 'comentó tu publicación', category: 'Comentario', className: 'notice-comment' },
+  COMMENT_REPLY: { Icon: MessageSquare, text: 'respondió a tu comentario', category: 'Respuesta', className: 'notice-comment' },
+  COMMENT_LIKE: { Icon: Heart, text: 'reaccionó a tu comentario', category: 'Nitido en comentario', className: 'notice-like' },
+  FOLLOW: { Icon: UserPlus, text: 'ahora es tu seguidor', category: 'Nuevo seguidor', className: 'notice-follow' },
 };
+function validNotice(value: unknown): value is Notice {
+  const notice = value as Partial<Notice> | null;
+  return !!notice && typeof notice.id === 'string' && typeof notice.createdAt === 'string' && !!notice.type && Object.hasOwn(noticeContent, notice.type)
+    && !!notice.actor && typeof notice.actor.username === 'string';
+}
+function noticeTarget(notice: Notice) {
+  if (notice.type === 'FOLLOW') return '/perfil/' + encodeURIComponent(notice.actor.username);
+  if (notice.postId) return '/feed?post=' + encodeURIComponent(notice.postId)
+    + (notice.commentId ? '&comment=' + encodeURIComponent(notice.commentId) : '');
+  return '/perfil/' + encodeURIComponent(notice.actor.username);
+}
 
 export function NotificationsView() {
-  const { user } = useSession();
+  const { user, unread, refreshUnread } = useSession();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [busyIds, setBusyIds] = useState<string[]>([]);
+  const generation = useRef(0);
+  const mounted = useRef(false);
+  const readIds = useRef(new Set<string>());
+  const pageRef = useRef(1);
+
+  const merge = useCallback((incoming: Notice[]) => {
+    setNotices(current => mergeNotices(current, incoming.filter(validNotice).map(notice => ({
+      ...notice, isRead: notice.isRead || readIds.current.has(notice.id),
+    }))));
+  }, []);
 
   const refresh = useCallback(async () => {
-    const result = await api<Notice[]>("/notifications?page=1&limit=20");
-    setNotices(current => mergeNotices(current, result));
-    setPage(1); setHasMore(result.length === 20);
-  }, []);
+    const request = ++generation.current;
+    try {
+      const result = await api<Notice[]>('/notifications?page=1&limit=20');
+      if (!mounted.current || request !== generation.current) return;
+      merge(result);
+      // Si se cargaron más páginas no se retrocede el cursor al reconciliar la primera.
+      if (pageRef.current === 1) setHasMore(result.length === 20);
+      setError('');
+      await refreshUnread();
+    } catch (cause) {
+      if (mounted.current && request === generation.current) setError(errorText(cause));
+    } finally {
+      if (mounted.current && request === generation.current) setLoading(false);
+    }
+  }, [merge, refreshUnread]);
 
   useEffect(() => {
     if (!user) return;
-    let cancelled = false;
-    void refresh().catch(error => { if (!cancelled) setError(errorText(error)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+    mounted.current = true;
+    setLoading(true); setNotices([]); setPage(1); pageRef.current = 1;
+    setHasMore(false); readIds.current.clear();
+    void refresh();
     const receive = (event: Event) => {
-      const notice = (event as CustomEvent<Notice>).detail;
-      if (notice?.id) setNotices(current => mergeNotices(current, [notice]));
+      const notice = (event as CustomEvent<unknown>).detail;
+      if (validNotice(notice)) merge([notice]);
+      // Releer del servidor también recupera eventos recibidos sin actor o durante navegación.
+      void refresh();
     };
-    const reconnect = () => { void refresh().catch(error => setError(errorText(error))); };
-    window.addEventListener("hivibe:notification", receive);
-    window.addEventListener("hivibe:reconnect", reconnect);
+    const reconcile = () => { if (document.visibilityState === 'visible') void refresh(); };
+    const read = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (id) {
+        readIds.current.add(id);
+        setNotices(current => current.map(notice => notice.id === id ? { ...notice, isRead: true } : notice));
+      }
+      void refreshUnread();
+    };
+    window.addEventListener('hivibe:notification', receive);
+    window.addEventListener('hivibe:notification-read', read);
+    window.addEventListener('hivibe:reconnect', reconcile);
+    window.addEventListener('focus', reconcile);
+    document.addEventListener('visibilitychange', reconcile);
     return () => {
-      cancelled = true;
-      window.removeEventListener("hivibe:notification", receive);
-      window.removeEventListener("hivibe:reconnect", reconnect);
+      mounted.current = false; generation.current++;
+      window.removeEventListener('hivibe:notification', receive);
+      window.removeEventListener('hivibe:notification-read', read);
+      window.removeEventListener('hivibe:reconnect', reconcile);
+      window.removeEventListener('focus', reconcile);
+      document.removeEventListener('visibilitychange', reconcile);
     };
-  }, [user, refresh]);
+  }, [user?.id, refresh, merge, refreshUnread]);
 
   async function markRead(notice: Notice) {
     if (notice.isRead || busyIds.includes(notice.id)) return;
-    setBusyIds(current => [...current, notice.id]); setError("");
+    setBusyIds(current => [...current, notice.id]);
     try {
-      const updated = await api<Notice>(`/notifications/${encodeURIComponent(notice.id)}/read`, { method: "PATCH" });
-      setNotices(current => current.map(item => item.id === updated.id ? updated : item));
-      window.dispatchEvent(new CustomEvent("hivibe:notification-read", { detail: { id: updated.id } }));
-    } catch (error) { setError(errorText(error)); }
-    finally { setBusyIds(current => current.filter(id => id !== notice.id)); }
+      await api('/notifications/' + encodeURIComponent(notice.id) + '/read', { method: 'PATCH' });
+      readIds.current.add(notice.id);
+      if (mounted.current) setNotices(current => current.map(item => item.id === notice.id ? { ...item, isRead: true } : item));
+      window.dispatchEvent(new CustomEvent('hivibe:notification-read', { detail: { id: notice.id } }));
+    } catch (cause) { if (mounted.current) setError(errorText(cause)); }
+    finally { if (mounted.current) setBusyIds(current => current.filter(id => id !== notice.id)); }
   }
-
   async function loadMore() {
     if (loadingMore) return;
-    setLoadingMore(true); setError("");
+    setLoadingMore(true);
+    const request = generation.current;
     try {
-      const next = page + 1;
-      const result = await api<Notice[]>(`/notifications?page=${next}&limit=20`);
-      setNotices(current => mergeNotices(current, result));
-      setPage(next); setHasMore(result.length === 20);
-    } catch (error) { setError(errorText(error)); }
-    finally { setLoadingMore(false); }
+      const next = pageRef.current + 1;
+      const result = await api<Notice[]>('/notifications?page=' + next + '&limit=20');
+      if (!mounted.current || request !== generation.current) return;
+      merge(result); setPage(next); pageRef.current = next; setHasMore(result.length === 20);
+    } catch (cause) { if (mounted.current) setError(errorText(cause)); }
+    finally { if (mounted.current) setLoadingMore(false); }
   }
 
-  const unread = notices.filter(notice => !notice.isRead).length;
   return <div className="stack notifications-view">
     <div className="section-title"><div><h1>Notificaciones</h1></div><Bell size={32} aria-hidden="true" /></div>
-    <section className="panel"><div className="panel-heading"><span><Sparkles size={16} /> Tus notificaciones</span><span className="muted">{unread ? `${unread} sin leer en esta lista` : "Todo al día"}</span></div>
-      {error && <div className="error-message" role="alert">{error} <button className="text-button" onClick={() => { setError(""); void refresh().catch(error => setError(errorText(error))); }}>Reintentar</button></div>}
-      {loading ? <div className="loading-state" role="status"><LoaderCircle size={20} className="spin" /> Cargando notificaciones…</div>
-        : notices.length === 0 ? <div className="empty-state"><Bell size={36} /><h2>No hay notificaciones</h2><p className="muted">Las reacciones, comentarios, seguidores y mensajes aparecerán aquí.</p><Link className="btn btn-primary" href="/feed">Ir al muro <ArrowLeft size={16} /></Link></div>
+    <section className="panel">
+      <div className="panel-heading"><span><Bell size={16} /> Tus notificaciones</span><span className="muted">{unread ? unread + ' sin leer' : 'Todo al día'}</span></div>
+      {error && <div className="error-message" role="alert">{error} <button className="text-button" onClick={() => void refresh()}>Reintentar</button></div>}
+      {loading && notices.length === 0 ? <div className="loading-state" role="status"><LoaderCircle size={20} className="spin" /> Cargando notificaciones…</div>
+        : notices.length === 0 && !error ? <div className="empty-state"><Bell size={36} /><h2>No hay notificaciones</h2><p className="muted">Las reacciones, comentarios y seguidores aparecerán aquí.</p><Link className="btn btn-primary" href="/feed">Ir al feed <ArrowLeft size={16} /></Link></div>
         : <div className="notification-list">{notices.map(notice => {
-          const content = noticeContent[notice.type] || noticeContent.MESSAGE;
+          const content = noticeContent[notice.type];
           const Icon = content.Icon;
-          const target = notice.type === "MESSAGE" ? `/mensajes?to=${encodeURIComponent(notice.actorId)}` : notice.postId ? `/feed?post=${encodeURIComponent(notice.postId)}` : `/perfil/${encodeURIComponent(notice.actor.username)}`;
-          return <article key={notice.id} className={`notification-item ${content.className}${notice.isRead ? "" : " unread"}`}>
-            <Link href={`/perfil/${encodeURIComponent(notice.actor.username)}`} aria-label={`Ver perfil de ${notice.actor.displayName || notice.actor.username}`}><ChatAvatar person={notice.actor} /></Link>
-            <div className="notification-copy"><span className="eyebrow"><Icon size={13} /> {content.category}</span><Link href={target} onClick={() => void markRead(notice)}><strong>{notice.actor.displayName || notice.actor.username}</strong> {content.text}.</Link><time className="muted" dateTime={notice.createdAt}>{fullDate(notice.createdAt)}</time></div>
+          return <article key={notice.id} className={'notification-item ' + content.className + (notice.isRead ? '' : ' unread')}>
+            <Link href={'/perfil/' + encodeURIComponent(notice.actor.username)} aria-label={'Ver perfil de ' + (notice.actor.displayName || notice.actor.username)}><ChatAvatar person={notice.actor} /></Link>
+            <div className="notification-copy"><span className="eyebrow"><Icon size={13} /> {content.category}</span><Link href={noticeTarget(notice)} onClick={() => void markRead(notice)}><strong>{notice.actor.displayName || notice.actor.username}</strong> {content.text}.</Link><time className="muted" dateTime={notice.createdAt}>{fullDate(notice.createdAt)}</time></div>
             {!notice.isRead ? <button className="btn btn-small notice-read" disabled={busyIds.includes(notice.id)} onClick={() => void markRead(notice)} aria-label="Marcar notificación como leída" title="Marcar como leída">{busyIds.includes(notice.id) ? <LoaderCircle size={16} className="spin" /> : <CheckCheck size={16} />}</button> : <Check size={16} className="muted notice-read" aria-label="Leída" />}
           </article>;
         })}</div>}
       {hasMore && <div className="panel-body"><button className="btn" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore && <LoaderCircle size={16} className="spin" />} Ver notificaciones anteriores</button></div>}
     </section>
-    <p className="muted notification-footnote"><Sparkles size={13} /> Las nuevas notificaciones aparecen aquí sin actualizar la página.</p>
   </div>;
 }
