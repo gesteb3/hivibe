@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { sameOrigin } from '@/lib/request-origin';
 export const dynamic='force-dynamic';
 async function proxy(req:NextRequest,{params}:{params:Promise<{path:string[]}>}){
  const {path}=await params;
  if(path.some(part=>!part||part==='.'||part==='..'||part.includes('/')||part.includes('\\')))return NextResponse.json({message:'Ruta inválida'},{status:400});
- if(req.method!=='GET'&&req.headers.get('origin')!==req.nextUrl.origin)return NextResponse.json({message:'Origen no permitido'},{status:403});
+ if(req.method!=='GET'&&!sameOrigin(req))return NextResponse.json({message:'Origen no permitido'},{status:403});
  const jar=await cookies(); const token=jar.get('hv_session')?.value;
  const route=path.join('/');const login=route==='auth/login'&&req.method==='POST';
  const publicRoute=route==='auth/register'||login||route==='health'||(path.length===2&&path[0]==='users'&&path[1]!=='me'&&req.method==='GET');
